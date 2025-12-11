@@ -9,6 +9,12 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class ApiTokenController extends Controller
 {
+    /**
+     * Return current user's personal access tokens.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function list(Request $request)
     {
         $tokens = $request->user()->tokens()
@@ -21,6 +27,12 @@ class ApiTokenController extends Controller
         ]);
     }
 
+    /**
+     * Issue a new personal access token with optional abilities/expiry.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -50,6 +62,13 @@ class ApiTokenController extends Controller
         ], 201);
     }
 
+    /**
+     * Revoke a specific personal access token.
+     *
+     * @param Request $request
+     * @param PersonalAccessToken $token
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy(Request $request, PersonalAccessToken $token)
     {
         $user = $request->user();

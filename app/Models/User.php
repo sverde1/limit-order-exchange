@@ -54,11 +54,21 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Asset balances owned by the user.
+     *
+     * @return HasMany<Asset>
+     */
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);
     }
 
+    /**
+     * Orders placed by the user.
+     *
+     * @return HasMany<Order>
+     */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);

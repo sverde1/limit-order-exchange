@@ -30,6 +30,11 @@ class Order extends Model
         'canceled_at',
     ];
 
+    /**
+     * Attribute casts for order fields.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -41,6 +46,11 @@ class Order extends Model
         ];
     }
 
+    /**
+     * Owning user.
+     *
+     * @return BelongsTo<Order, User>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

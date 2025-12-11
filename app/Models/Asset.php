@@ -18,6 +18,11 @@ class Asset extends Model
         'locked_amount',
     ];
 
+    /**
+     * Attribute casts for asset amounts.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -26,6 +31,11 @@ class Asset extends Model
         ];
     }
 
+    /**
+     * Owning user.
+     *
+     * @return BelongsTo<Asset, User>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
