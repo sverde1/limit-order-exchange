@@ -19,7 +19,6 @@ import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
 const page = usePage();
-const isAuthed = computed(() => Boolean(page.props.auth?.user));
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
         {
