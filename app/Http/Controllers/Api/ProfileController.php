@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class ProfileController extends Controller
@@ -49,6 +50,39 @@ class ProfileController extends Controller
         return response()->json([
             'message' => 'Wallet reset to $10k.',
             'balance' => $user->balance,
+        ]);
+    }
+
+    /**
+     * Return the authenticated user's orders with optional filters.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function orders(Request $request)
+    {
+        $validated = $request->validate([
+            'symbol' => ['sometimes', 'string', 'max:16'],
+            'status' => ['sometimes', 'in:open,filled,canceled,all'],
+        ]);
+
+        $symbol = isset($validated['symbol']) ? strtoupper($validated['symbol']) : null;
+        $status = $validated['status'] ?? 'all';
+
+        $statusMap = [
+            'open'     => Order::STATUS_OPEN,
+            'filled'   => Order::STATUS_FILLED,
+            'canceled' => Order::STATUS_CANCELED,
+        ];
+
+        $ordersQuery = $request->user()
+            ->orders()
+            ->when($symbol, fn ($query) => $query->where('symbol', $symbol))
+            ->when($status !== 'all', fn ($query) => $query->where('status', $statusMap[$status]))
+            ->orderByDesc('created_at');
+
+        return response()->json([
+            'orders' => $ordersQuery->get(),
         ]);
     }
 }

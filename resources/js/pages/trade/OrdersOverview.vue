@@ -41,6 +41,11 @@ type Order = {
     canceled_at?: string | null;
 };
 
+type Orderbook = {
+    buys: Order[];
+    sells: Order[];
+};
+
 type Trade = {
     symbol: string;
     side: string;
@@ -54,28 +59,19 @@ const selectedSymbol = ref(symbols[0]);
 
 const profile = ref<ProfileResponse | null>(null);
 const orders = ref<Order[]>([]);
+const orderbook = ref<Orderbook>({
+  buys: [],
+  sells: [],
+});
 const recentTrades = ref<Trade[]>([]);
 
 const loadingProfile = ref(false);
 const loadingOrders = ref(false);
+const loadingOrderbook = ref(false);
 const errorMessage = ref('');
 
 const usdBalance = computed(() => profile.value?.user.balance ?? '0.00');
 const assetBalances = computed(() => profile.value?.assets ?? []);
-
-const openOrders = computed(() =>
-    orders.value.filter((o) => o.status === 1 && o.symbol === selectedSymbol.value),
-);
-
-const orderbook = computed(() => {
-    const buys = openOrders.value
-        .filter((o) => o.side === 'buy')
-        .sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
-    const sells = openOrders.value
-        .filter((o) => o.side === 'sell')
-        .sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-    return { buys, sells };
-});
 
 const xsrfToken = () => {
     const match = document.cookie
@@ -123,13 +119,10 @@ const loadProfile = async () => {
 
 const loadOrders = async () => {
     loadingOrders.value = true;
-    const response = await fetch(
-        `/api/orders?symbol=${selectedSymbol.value}&status=all`,
-        {
-            credentials: 'same-origin',
-            headers: await withAuthHeaders(false),
-        },
-    );
+    const response = await fetch(`/api/profile/orders`, {
+        credentials: 'same-origin',
+        headers: await withAuthHeaders(false),
+    });
 
     if (response.ok) {
         const data = await response.json();
@@ -142,8 +135,31 @@ const loadOrders = async () => {
     loadingOrders.value = false;
 };
 
+const loadOrderbook = async () => {
+    loadingOrders.value = true;
+    const response = await fetch(`/api/orders?symbol=${selectedSymbol.value}`, {
+        credentials: 'same-origin',
+        headers: await withAuthHeaders(false),
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+        const orders = data.orders ?? [];
+
+        orderbook.value = {
+            buys: orders.filter((o: any) => o.side === 'buy'),
+            sells: orders.filter((o: any) => o.side === 'sell'),
+        };
+        errorMessage.value = '';
+    } else {
+        errorMessage.value = 'Unable to load order book.';
+    }
+
+    loadingOrderbook.value = false;
+};
+
 const refreshAll = async () => {
-    await Promise.all([loadProfile(), loadOrders()]);
+    await Promise.all([loadProfile(), loadOrders(), loadOrderbook()]);
 };
 
 const resetWallet = async () => {
@@ -244,7 +260,7 @@ onBeforeUnmount(() => {
 });
 
 watch(selectedSymbol, async () => {
-    await loadOrders();
+    await loadOrderbook();
 });
 </script>
 
@@ -258,26 +274,6 @@ watch(selectedSymbol, async () => {
                     title="Orders & Wallet Overview"
                     description="Track balances, past orders, and live orderbook."
                 />
-                <div class="flex items-center gap-2">
-                    <label class="text-sm font-medium text-muted-foreground"
-                        >Symbol</label
-                    >
-                    <select
-                        v-model="selectedSymbol"
-                        class="h-10 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        <option
-                            v-for="sym in symbols"
-                            :key="sym"
-                            :value="sym"
-                        >
-                            {{ sym }}
-                        </option>
-                    </select>
-                    <Button size="sm" variant="outline" @click="refreshAll">
-                        Refresh
-                    </Button>
-                </div>
             </div>
 
             <div v-if="errorMessage" class="text-sm text-destructive">
@@ -340,7 +336,7 @@ watch(selectedSymbol, async () => {
 
                 <Card class="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Orders</CardTitle>
+                        <CardTitle>My Orders</CardTitle>
                         <CardDescription>
                             Open, filled, and canceled orders for
                             {{ selectedSymbol }}.
@@ -419,10 +415,37 @@ watch(selectedSymbol, async () => {
             <div class="grid gap-4 lg:grid-cols-3">
                 <Card class="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Orderbook (Open)</CardTitle>
-                        <CardDescription>
-                            Live open orders for {{ selectedSymbol }}.
-                        </CardDescription>
+                        <div
+                            class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
+                        >
+                            <div>
+                                <CardTitle>Orderbook (Open)</CardTitle>
+                                <CardDescription>
+                                    Live open orders for {{ selectedSymbol }}.
+                                </CardDescription>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label
+                                    class="text-sm font-medium text-muted-foreground"
+                                    >Symbol</label
+                                >
+                                <select
+                                    v-model="selectedSymbol"
+                                    class="h-10 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <option
+                                        v-for="sym in symbols"
+                                        :key="sym"
+                                        :value="sym"
+                                    >
+                                        {{ sym }}
+                                    </option>
+                                </select>
+                                <Button size="sm" variant="outline" @click="refreshAll">
+                                    Refresh
+                                </Button>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent class="grid gap-4 md:grid-cols-2">
                         <div>

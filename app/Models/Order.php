@@ -38,7 +38,7 @@ class Order extends Model
     protected function casts(): array
     {
         return [
-            'price'       => 'decimal:18',
+            'price'       => 'decimal:8',
             'amount'      => 'decimal:18',
             'opened_at'   => 'datetime',
             'filled_at'   => 'datetime',

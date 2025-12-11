@@ -21,18 +21,16 @@ class OrdersController extends Controller
     public function index(Request $request)
     {
         $validated = $request->validate([
+            // Orderbook for selected symbol
             'symbol' => ['required', 'string', 'max:16'],
-            'status' => ['sometimes', 'in:open,all'],
         ]);
 
-        $symbol = strtoupper($validated['symbol']);
-        $status = $validated['status'] ?? 'open';
+        $symbol = isset($validated['symbol']) ? strtoupper($validated['symbol']) : null;
 
         $orders = Order::query()
+            ->select('id', 'symbol', 'side', 'price', 'amount')
             ->where('symbol', $symbol)
-            ->when($status === 'open', function ($query) {
-                $query->where('status', Order::STATUS_OPEN);
-            })
+            ->where('status', Order::STATUS_OPEN)
             ->orderByDesc('created_at')
             ->get();
 
@@ -55,7 +53,6 @@ class OrdersController extends Controller
         $validated = $request->validate([
             'symbol' => ['required', 'string', 'max:16'],
             'side'   => ['required', 'in:buy,sell'],
-            // Match DB precision: price (18,8), amount (28,18)
             'price'  => ['required', 'decimal:0,8', 'gt:0'],
             'amount' => ['required', 'decimal:0,18', 'gt:0'],
         ]);
