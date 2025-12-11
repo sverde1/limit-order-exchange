@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 class OrdersController extends Controller
 {
     /**
-     * List open orders for a given symbol.
+     * List open or all orders for a given symbol.
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -22,14 +22,18 @@ class OrdersController extends Controller
     {
         $validated = $request->validate([
             'symbol' => ['required', 'string', 'max:16'],
+            'status' => ['sometimes', 'in:open,all'],
         ]);
 
         $symbol = strtoupper($validated['symbol']);
+        $status = $validated['status'] ?? 'open';
 
         $orders = Order::query()
-            ->where('status', Order::STATUS_OPEN)
             ->where('symbol', $symbol)
-            ->orderBy('created_at')
+            ->when($status === 'open', function ($query) {
+                $query->where('status', Order::STATUS_OPEN);
+            })
+            ->orderByDesc('created_at')
             ->get();
 
         return response()->json([

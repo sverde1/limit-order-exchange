@@ -29,4 +29,26 @@ class ProfileController extends Controller
             'assets' => $user->assets,
         ]);
     }
+
+    /**
+     * Reset the authenticated user wallet balance to $10k.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resetWallet(Request $request)
+    {
+        if (! extension_loaded('bcmath')) {
+            abort(500, 'BCMath PHP extension is required to process funds.');
+        }
+
+        $user = $request->user();
+        $user->balance = 10000;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Wallet reset to $10k.',
+            'balance' => $user->balance,
+        ]);
+    }
 }
