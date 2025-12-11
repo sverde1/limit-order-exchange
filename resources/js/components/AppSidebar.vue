@@ -13,33 +13,27 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid, LineChart, Wallet } from 'lucide-vue-next';
-import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
-const page = usePage();
-const mainNavItems = computed<NavItem[]>(() => {
-    const items: NavItem[] = [
-        {
-            title: 'Dashboard',
-            href: dashboard(),
-            icon: LayoutGrid,
-        },
-        {
-            title: 'Orders & Wallet',
-            href: '/trade/overview',
-            icon: Wallet,
-        },
-        {
-            title: 'Limit Order',
-            href: '/trade/limit-order',
-            icon: LineChart,
-        },
-    ];
-
-    return items;
-});
+const mainNavItems: NavItem[] = [
+    {
+        title: 'Dashboard',
+        href: dashboard(),
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Orders & Wallet',
+        href: '/trade/overview',
+        icon: Wallet,
+    },
+    {
+        title: 'Limit Order',
+        href: '/trade/limit-order',
+        icon: LineChart,
+    },
+];
 
 const footerNavItems: NavItem[] = [
     {
