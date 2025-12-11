@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\PasswordController;
+use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
@@ -25,4 +26,14 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+
+    Route::get('settings/api-keys', function () {
+        return Inertia::render('settings/ApiTokens');
+    })->name('api-keys.index');
+
+    Route::prefix('settings/api-keys')->middleware('throttle:api')->group(function () {
+        Route::get('/tokens', [ApiTokenController::class, 'list']);
+        Route::post('/', [ApiTokenController::class, 'store']);
+        Route::delete('/tokens/{token}', [ApiTokenController::class, 'destroy']);
+    });
 });
