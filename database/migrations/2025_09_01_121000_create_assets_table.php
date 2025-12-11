@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('symbol', 16);
-            $table->decimal('amount', 36, 18)->default(0)->comment('Available asset');
+            $table->decimal('amount', 28, 18)->default(0)->comment('Available asset');
             $table->decimal('locked_amount', 36, 18)->default(0)->comment('Reserved for open sell orders');
             $table->timestamps();
 

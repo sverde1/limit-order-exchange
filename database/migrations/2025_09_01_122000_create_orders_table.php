@@ -16,8 +16,8 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('symbol', 16);
             $table->enum('side', ['buy', 'sell']);
-            $table->decimal('price', 36, 18);
-            $table->decimal('amount', 36, 18);
+            $table->decimal('price', 18, 8);
+            $table->decimal('amount', 28, 18);
             $table->unsignedTinyInteger('status')->default(1)->comment('1=open, 2=filled, 3=canceled');
             $table->timestamps();
 

@@ -55,7 +55,8 @@ class OrdersController extends Controller
         $validated = $request->validate([
             'symbol' => ['required', 'string', 'max:16'],
             'side'   => ['required', 'in:buy,sell'],
-            'price'  => ['required', 'decimal:0,18', 'gt:0'],
+            // Match DB precision: price (18,8), amount (28,18)
+            'price'  => ['required', 'decimal:0,8', 'gt:0'],
             'amount' => ['required', 'decimal:0,18', 'gt:0'],
         ]);
 
@@ -66,12 +67,12 @@ class OrdersController extends Controller
             $user = User::whereKey($userId)->lockForUpdate()->firstOrFail();
 
             if ($validated['side'] === Order::SIDE_BUY) {
-                $totalCost = bcmul($validated['price'], $validated['amount'], 18);
+                $totalCost  = bcmul($validated['price'], $validated['amount'], 18);
                 $newBalance = bcsub($user->balance ?? '0', $totalCost, 2);
 
                 if (bccomp($newBalance, '0', 2) < 0) {
                     throw ValidationException::withMessages([
-                        'balance' => 'Insufficient USD balance.',
+                        'balance' => 'User has insufficient USD balance.',
                     ]);
                 }
 
@@ -85,22 +86,22 @@ class OrdersController extends Controller
 
                 if (! $asset || bccomp($asset->amount, $validated['amount'], 18) < 0) {
                     throw ValidationException::withMessages([
-                        'amount' => 'Insufficient asset balance.',
+                        'balance' => 'User has insufficient asset balance.',
                     ]);
                 }
 
-                $asset->amount = bcsub($asset->amount, $validated['amount'], 18);
+                $asset->amount        = bcsub($asset->amount, $validated['amount'], 18);
                 $asset->locked_amount = bcadd($asset->locked_amount, $validated['amount'], 18);
                 $asset->save();
             }
 
             return Order::create([
-                'user_id' => $userId,
-                'symbol' => $symbol,
-                'side' => $validated['side'],
-                'price' => $validated['price'],
-                'amount' => $validated['amount'],
-                'status' => Order::STATUS_OPEN,
+                'user_id'    => $userId,
+                'symbol'     => $symbol,
+                'side'       => $validated['side'],
+                'price'      => $validated['price'],
+                'amount'     => $validated['amount'],
+                'status'     => Order::STATUS_OPEN,
                 'created_at' => now(),
             ]);
         });
@@ -163,7 +164,7 @@ class OrdersController extends Controller
 
         return response()->json([
             'message' => 'Order canceled.',
-            'order' => $order->fresh(),
+            'order'   => $order->fresh(),
         ]);
     }
 

@@ -190,15 +190,15 @@ const breadcrumbs: BreadcrumbItem[] = [
                         </div>
                     </div>
 
-                    <div v-if="errors.form" class="text-sm text-destructive">
-                        {{ errors.form }}
+                    <div v-if="errors.form || errors.balance" class="text-sm text-destructive">
+                        {{ errors.form || errors.balance }}
                     </div>
 
                     <div v-if="message" class="text-sm text-emerald-600">
                         {{ message }}
                     </div>
 
-                    <div class="flex justify-end">
+                    <div class="flex w-full justify-end">
                         <Button :disabled="loading" @click="placeOrder">
                             {{ loading ? 'Placing…' : 'Place Order' }}
                         </Button>
