@@ -57,7 +57,7 @@ class OrdersController extends Controller
             'amount' => ['required', 'decimal:0,18', 'gt:0'],
         ]);
 
-        $symbol = strtoupper($validated['symbol']);
+        $symbol = isset($validated['symbol']) ? strtoupper($validated['symbol']) : null;
         $userId = $request->user()->id;
 
         $order = DB::transaction(function () use ($validated, $symbol, $userId) {
@@ -153,7 +153,7 @@ class OrdersController extends Controller
             }
 
             $order->status = Order::STATUS_CANCELED;
-            $order->canceled_at = now();
+            $order->updated_at = now();
             $order->save();
 
             return $order;

@@ -11,6 +11,15 @@ class Asset extends Model
     /** @use HasFactory<\Database\Factories\AssetFactory> */
     use HasFactory;
 
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * The assets table does not store created_at/updated_at columns.
+     *
+     * @var bool
+     */
+    public $timestamps = false;
+
     protected $fillable = [
         'user_id',
         'symbol',

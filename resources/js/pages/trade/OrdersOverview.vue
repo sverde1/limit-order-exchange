@@ -36,9 +36,6 @@ type Order = {
     amount: string;
     status: number;
     created_at?: string;
-    opened_at?: string;
-    filled_at?: string | null;
-    canceled_at?: string | null;
 };
 
 type Orderbook = {
@@ -64,6 +61,7 @@ const orderbook = ref<Orderbook>({
   sells: [],
 });
 const recentTrades = ref<Trade[]>([]);
+const cancelingOrderIds = ref<number[]>([]);
 
 const loadingProfile = ref(false);
 const loadingOrders = ref(false);
@@ -183,6 +181,38 @@ const resetWallet = async () => {
     await loadProfile();
 };
 
+const formatPrice = (price: string | number) => {
+    const numericPrice = Number(price);
+    if (Number.isFinite(numericPrice)) {
+        const rounded = Math.round(numericPrice * 100) / 100;
+        return rounded.toFixed(2);
+    }
+    return '0.00';
+};
+
+const cancelOrder = async (orderId: number) => {
+    if (cancelingOrderIds.value.includes(orderId)) {
+        return;
+    }
+
+    cancelingOrderIds.value = [...cancelingOrderIds.value, orderId];
+
+    const response = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: await withAuthHeaders(),
+    });
+
+    if (response.ok) {
+        await Promise.all([loadOrders(), loadOrderbook()]);
+        errorMessage.value = '';
+    } else {
+        errorMessage.value = 'Unable to cancel order.';
+    }
+
+    cancelingOrderIds.value = cancelingOrderIds.value.filter((id) => id !== orderId);
+};
+
 const statusLabel = (status: number) => {
     if (status === 1) return 'Open';
     if (status === 2) return 'Filled';
@@ -215,9 +245,6 @@ const handleOrderMatched = async (payload: any) => {
             orders.value[idx] = {
                 ...orders.value[idx],
                 status: payload.status ?? orders.value[idx].status,
-                filled_at: payload.filled_at ?? orders.value[idx].filled_at,
-                canceled_at:
-                    payload.canceled_at ?? orders.value[idx].canceled_at,
             };
         }
     }
@@ -356,20 +383,13 @@ watch(selectedSymbol, async () => {
                             <table class="min-w-full text-sm">
                                 <thead class="text-left text-muted-foreground">
                                     <tr class="border-b">
-                                        <th class="px-2 py-2 font-medium">
-                                            Side
-                                        </th>
-                                        <th class="px-2 py-2 font-medium">
-                                            Price
-                                        </th>
-                                        <th class="px-2 py-2 font-medium">
-                                            Amount
-                                        </th>
-                                        <th class="px-2 py-2 font-medium">
-                                            Status
-                                        </th>
-                                        <th class="px-2 py-2 font-medium">
-                                            Created
+                                        <th class="px-2 py-2 font-medium">Side</th>
+                                        <th class="px-2 py-2 font-medium">Price</th>
+                                        <th class="px-2 py-2 font-medium">Amount</th>
+                                        <th class="px-2 py-2 font-medium">Status</th>
+                                        <th class="px-2 py-2 font-medium">Created</th>
+                                        <th class="px-2 py-2 text-right font-medium">
+                                            Actions
                                         </th>
                                     </tr>
                                 </thead>
@@ -383,7 +403,7 @@ watch(selectedSymbol, async () => {
                                             {{ order.side }}
                                         </td>
                                         <td class="px-2 py-2">
-                                            ${{ order.price }}
+                                            ${{ formatPrice(order.price) }}
                                         </td>
                                         <td class="px-2 py-2">
                                             {{ order.amount }}
@@ -403,6 +423,22 @@ watch(selectedSymbol, async () => {
                                                       ).toLocaleString()
                                                     : '—'
                                             }}
+                                        </td>
+                                        <td class="px-2 py-2 text-right">
+                                            <Button
+                                                v-if="order.status === 1"
+                                                size="sm"
+                                                variant="destructive"
+                                                :disabled="cancelingOrderIds.includes(order.id)"
+                                                @click="cancelOrder(order.id)"
+                                            >
+                                                {{
+                                                    cancelingOrderIds.includes(order.id)
+                                                        ? 'Canceling…'
+                                                        : 'Cancel order'
+                                                }}
+                                            </Button>
+                                            <span v-else class="text-muted-foreground">—</span>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -463,7 +499,7 @@ watch(selectedSymbol, async () => {
                                 :key="order.id"
                                 class="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
                             >
-                                <span>${{ order.price }}</span>
+                                <span>${{ formatPrice(order.price) }}</span>
                                 <span>{{ order.amount }}</span>
                             </div>
                         </div>
@@ -482,7 +518,7 @@ watch(selectedSymbol, async () => {
                                 :key="order.id"
                                 class="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
                             >
-                                <span>${{ order.price }}</span>
+                                <span>${{ formatPrice(order.price) }}</span>
                                 <span>{{ order.amount }}</span>
                             </div>
                         </div>
@@ -522,7 +558,7 @@ watch(selectedSymbol, async () => {
                             </div>
                             <div class="text-right">
                                 <div class="font-semibold">
-                                    ${{ trade.price }}
+                                    ${{ formatPrice(trade.price) }}
                                 </div>
                                 <div class="text-xs text-muted-foreground">
                                     {{ trade.amount }}

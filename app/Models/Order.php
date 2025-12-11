@@ -25,9 +25,8 @@ class Order extends Model
         'price',
         'amount',
         'status',
-        'opened_at',
-        'filled_at',
-        'canceled_at',
+        'created_at',
+        'updated_at',
     ];
 
     /**
@@ -40,9 +39,8 @@ class Order extends Model
         return [
             'price'       => 'decimal:8',
             'amount'      => 'decimal:18',
-            'opened_at'   => 'datetime',
-            'filled_at'   => 'datetime',
-            'canceled_at' => 'datetime',
+            'created_at'  => 'datetime',
+            'updated_at'  => 'datetime',
         ];
     }
 
