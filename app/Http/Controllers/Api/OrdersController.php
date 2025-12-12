@@ -16,13 +16,6 @@ use Illuminate\Validation\ValidationException;
 class OrdersController extends Controller
 {
     /**
-     * Admin user ID to receive commission.
-     *
-     * @var int
-     */
-    private int $adminUserId = 1;
-
-    /**
      * Pending events to dispatch after commit.
      *
      * @var array<int, array{type: string, payload: mixed}>
@@ -266,7 +259,8 @@ class OrdersController extends Controller
 
         $buyer  = User::whereKey($buyerOrder->user_id)->lockForUpdate()->firstOrFail();
         $seller = User::whereKey($sellerOrder->user_id)->lockForUpdate()->firstOrFail();
-        $admin  = User::whereKey($this->adminUserId)->lockForUpdate()->first();
+        $commissionUserId = (int) config('trading.commission_user_id', 1);
+        $commissionUser  = User::whereKey($commissionUserId)->lockForUpdate()->first();
 
         $matchedAt      = now();
         // Execute at maker price (best available in book).
@@ -298,10 +292,10 @@ class OrdersController extends Controller
         $seller->balance = bcadd($seller->balance ?? '0', $sellerPayout, 2);
         $seller->save();
 
-        // Credit admin commission
-        if ($admin) {
-            $admin->balance = bcadd($admin->balance ?? '0', $commission, 2);
-            $admin->save();
+        // Credit commission user commission
+        if ($commissionUser) {
+            $commissionUser->balance = bcadd($commissionUser->balance ?? '0', $commission, 2);
+            $commissionUser->save();
         }
 
         // Release seller locked asset and credit buyer asset
