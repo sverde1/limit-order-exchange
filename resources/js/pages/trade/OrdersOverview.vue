@@ -77,6 +77,9 @@ const errorMessage = ref('');
 
 const usdBalance = computed(() => profile.value?.user.balance ?? '0.00');
 const assetBalances = computed(() => profile.value?.assets ?? []);
+const orderFilterSymbol = ref<string | 'all'>('all');
+const orderFilterSide = ref<string | 'all'>('all');
+const orderFilterStatus = ref<string | 'all'>('all');
 const demoMenuOpen = ref(false);
 const demoBalance = ref('10000');
 const demoAssetName = ref('BTC');
@@ -145,6 +148,23 @@ const loadOrders = async () => {
 
     loadingOrders.value = false;
 };
+
+const filteredOrders = computed(() => {
+    return orders.value.filter((order) => {
+        const symbolMatch =
+            orderFilterSymbol.value === 'all' ||
+            order.symbol === orderFilterSymbol.value;
+        const sideMatch =
+            orderFilterSide.value === 'all' || order.side === orderFilterSide.value;
+        const statusMatch =
+            orderFilterStatus.value === 'all' ||
+            (orderFilterStatus.value === 'open' && order.status === 1) ||
+            (orderFilterStatus.value === 'filled' && order.status === 2) ||
+            (orderFilterStatus.value === 'canceled' && order.status === 3);
+
+        return symbolMatch && sideMatch && statusMatch;
+    });
+});
 
 const loadOrderbook = async () => {
     loadingOrderbook.value = true;
@@ -648,22 +668,62 @@ watch(selectedSymbol, async () => {
                 </Card>
 
                 <Card class="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle>My Orders</CardTitle>
-                        <CardDescription>
-                            Open, filled, and canceled orders for
-                            {{ selectedSymbol }}.
-                        </CardDescription>
-                    </CardHeader>
+                            <CardHeader>
+                                <div
+                                    class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
+                                >
+                                    <div>
+                                        <CardTitle>My Orders</CardTitle>
+                                        <CardDescription>
+                                            Open, filled, and canceled orders.
+                                        </CardDescription>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                                        <label class="text-muted-foreground">Symbol</label>
+                                        <select
+                                            v-model="orderFilterSymbol"
+                                            class="h-9 rounded-md border border-input bg-background px-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            <option value="all">All</option>
+                                            <option
+                                                v-for="sym in symbols"
+                                                :key="sym"
+                                                :value="sym"
+                                            >
+                                                {{ sym }}
+                                            </option>
+                                        </select>
+                                        <label class="text-muted-foreground">Side</label>
+                                        <select
+                                            v-model="orderFilterSide"
+                                            class="h-9 rounded-md border border-input bg-background px-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            <option value="all">All</option>
+                                            <option value="buy">Buy</option>
+                                            <option value="sell">Sell</option>
+                                        </select>
+                                        <label class="text-muted-foreground">Status</label>
+                                        <select
+                                            v-model="orderFilterStatus"
+                                            class="h-9 rounded-md border border-input bg-background px-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            <option value="all">All</option>
+                                            <option value="open">Open</option>
+                                            <option value="filled">Filled</option>
+                                            <option value="canceled">Canceled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </CardHeader>
                     <CardContent>
                         <div v-if="loadingOrders" class="text-sm text-muted-foreground">
                             Loading orders...
                         </div>
                         <div
-                            v-else-if="!orders.length"
+                            v-else-if="!filteredOrders.length"
                             class="text-sm text-muted-foreground"
                         >
-                            No orders yet.
+                            No orders match the selected filters.
                         </div>
                         <div v-else class="overflow-x-auto">
                             <div class="max-h-[500px] overflow-y-auto">
@@ -683,7 +743,7 @@ watch(selectedSymbol, async () => {
                                     </thead>
                                     <tbody>
                                         <tr
-                                            v-for="order in orders"
+                                        v-for="order in filteredOrders"
                                             :key="order.id"
                                             class="border-b last:border-none"
                                         >
