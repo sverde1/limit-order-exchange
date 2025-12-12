@@ -30,7 +30,8 @@ class ProfileController extends Controller
                 'balance'        => $user->balance,
                 'balance_locked' => $user->balance_locked,
             ],
-            'assets' => $user->assets,
+            'commission_rate' => (float) config('trading.commission_rate', 0.015),
+            'assets'          => $user->assets,
         ]);
     }
 

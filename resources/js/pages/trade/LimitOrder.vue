@@ -29,6 +29,7 @@ type ProfileResponse = {
         balance_locked?: string;
     };
     assets: Asset[];
+    commission_rate?: number;
 };
 
 const symbols = ['BTC', 'ETH'];
@@ -131,6 +132,9 @@ const availableAsset = computed(() => {
     return asset?.amount ?? '0';
 });
 const currentUserId = computed(() => profile.value?.user.id);
+const commissionRate = computed(() =>
+    Number(profile.value?.commission_rate ?? 0.015),
+);
 
 const initPusher = async () => {
     if (pusherInstance.value) {
@@ -206,6 +210,20 @@ const orderValue = computed(() => {
 
     const value = priceNum * amountNum;
     return value.toFixed(2);
+});
+
+const sellerFee = computed(() => {
+    if (form.side !== 'sell') {
+        return null;
+    }
+
+    const value = Number(orderValue.value);
+    if (!Number.isFinite(value)) {
+        return null;
+    }
+
+    const fee = value * commissionRate.value;
+    return fee.toFixed(2);
 });
 </script>
 
@@ -323,11 +341,23 @@ const orderValue = computed(() => {
                     </div>
 
                     <div class="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                        Order value:
-                        <span class="font-semibold text-foreground"
-                            >${{ orderValue }}</span
+                        <span>Order value:</span>
+                        <span class="font-semibold text-foreground ml-1">${{ orderValue }}</span>
+                        <span class="ml-1 text-foreground">
+                            = {{ form.amount || 0 }} {{ form.symbol }} × ${{ form.price || 0 }}
+                        </span>
+                        <div
+                            v-if="sellerFee !== null"
+                            class="mt-1 text-xs text-muted-foreground"
                         >
-                        <span class="ml-1">({{ form.amount || 0 }} {{ form.symbol }})</span>
+                            Fee:
+                            <span class="font-semibold text-foreground ml-1">
+                                ${{ sellerFee }}
+                            </span>
+                            <span class="ml-1">
+                                = ${{ orderValue }} × {{ (commissionRate * 100).toFixed(2) }}%
+                            </span>
+                        </div>
                     </div>
                     <div class="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
                         <div class="flex items-center justify-between">
