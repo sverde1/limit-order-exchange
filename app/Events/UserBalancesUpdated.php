@@ -19,6 +19,7 @@ class UserBalancesUpdated implements ShouldBroadcastNow
     public function __construct(
         public readonly int $userId,
         public readonly string $balance,
+        public readonly string $balance_locked,
         public readonly mixed $assets,
     ) {
     }
@@ -53,9 +54,10 @@ class UserBalancesUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'user_id' => $this->userId,
-            'balance' => $this->balance,
-            'assets'  => $this->assets,
+            'user_id'        => $this->userId,
+            'balance'        => $this->balance,
+            'balance_locked' => $this->balance_locked,
+            'assets'         => $this->assets,
         ];
     }
 }

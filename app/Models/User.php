@@ -48,9 +48,10 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'                => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
-            'balance' => 'decimal:2',
+            'balance'                 => 'decimal:2',
+            'balance_locked'          => 'decimal:2',
         ];
     }
 
@@ -72,5 +73,24 @@ class User extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Locked USD balance reserved for open buy orders.
+     */
+    protected function balanceLocked(): 
+        \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: function (): string {
+                $sum = $this->orders()
+                    ->where('side', Order::SIDE_BUY)
+                    ->where('status', Order::STATUS_OPEN)
+                    ->selectRaw('COALESCE(SUM(price * amount), 0) as total')
+                    ->value('total');
+
+                return number_format((float) $sum, 2, '.', '');
+            },
+        );
     }
 }

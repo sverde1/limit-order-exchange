@@ -271,12 +271,13 @@ class OrdersController extends Controller
         $buyerOrder  = $taker->side === Order::SIDE_BUY ? $taker : $maker;
         $sellerOrder = $taker->side === Order::SIDE_SELL ? $taker : $maker;
 
-        $buyer = User::whereKey($buyerOrder->user_id)->lockForUpdate()->firstOrFail();
+        $buyer  = User::whereKey($buyerOrder->user_id)->lockForUpdate()->firstOrFail();
         $seller = User::whereKey($sellerOrder->user_id)->lockForUpdate()->firstOrFail();
-        $admin = User::whereKey($this->adminUserId)->lockForUpdate()->first();
+        $admin  = User::whereKey($this->adminUserId)->lockForUpdate()->first();
 
         $matchedAt      = now();
-        $matchedPrice   = $maker->price; // trade executes at maker price
+        // Execute at maker price (best available in book).
+        $matchedPrice   = $maker->price;
         $matchedAmount  = $taker->amount;
         $tradeValue     = bcmul($matchedPrice, $matchedAmount, 18);
         $tradeValueCash = $this->formatMoney($tradeValue);
@@ -284,19 +285,28 @@ class OrdersController extends Controller
         $commissionRaw = bcmul($tradeValue, (string) $this->commissionRate, 18);
         $commission    = $this->formatMoney($commissionRaw);
 
+        // Buyer reserved at bid price when order was placed; refund any over-reserved amount.
+        $buyerBidValueRaw = bcmul($buyerOrder->price, $matchedAmount, 18);
+        $buyerBidValue    = $this->formatMoney($buyerBidValueRaw);
+        $refundRaw        = bcsub($buyerBidValue, $tradeValueCash, 18);
+        $refund           = $this->formatMoney($refundRaw);
+
+        if (bccomp($refund, '0', 2) > 0) {
+            $buyer->balance = bcadd($buyer->balance ?? '0', $refund, 2);
+        }
+
+        // Debit buyer commission
         if (bccomp($buyer->balance ?? '0', $commission, 2) < 0) {
             throw ValidationException::withMessages([
                 'balance' => 'Buyer has insufficient balance for commission.',
             ]);
         }
-
-        // Credit seller USD
-        $seller->balance = bcadd($seller->balance ?? '0', $tradeValueCash, 2);
-        $seller->save();
-
-        // Debit buyer commission
         $buyer->balance = bcsub($buyer->balance ?? '0', $commission, 2);
         $buyer->save();
+
+        // Credit seller USD at executed value
+        $seller->balance = bcadd($seller->balance ?? '0', $tradeValueCash, 2);
+        $seller->save();
 
         // Credit admin commission
         if ($admin) {
@@ -417,9 +427,10 @@ class OrdersController extends Controller
         $this->pendingEvents[] = [
             'type'    => 'balances',
             'payload' => [
-                'user_id' => $user->id,
-                'balance' => $user->balance,
-                'assets'  => $user->assets,
+                'user_id'        => $user->id,
+                'balance'        => $user->balance,
+                'balance_locked' => $user->balance_locked,
+                'assets'         => $user->assets,
             ],
         ];
     }
@@ -505,6 +516,7 @@ class OrdersController extends Controller
                     event(new UserBalancesUpdated(
                         $payload['user_id'],
                         $payload['balance'],
+                        $payload['balance_locked'],
                         $payload['assets'],
                     ));
                     break;

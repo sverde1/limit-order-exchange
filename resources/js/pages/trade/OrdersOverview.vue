@@ -406,7 +406,8 @@ const handleBalancesUpdated = (payload: any) => {
     }
 
     if (profile.value?.user) {
-        profile.value.user.balance = payload.balance ?? profile.value.user.balance;
+        profile.value.user.balance        = payload.balance ?? profile.value.user.balance;
+        profile.value.user.balance_locked = payload.balance_locked ?? profile.value.user.balance_locked;
     }
 
     if (payload.assets && Array.isArray(payload.assets) && profile.value) {
