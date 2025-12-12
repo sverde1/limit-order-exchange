@@ -36,10 +36,10 @@ class ApiTokenController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:64'],
-            'abilities' => ['sometimes', 'array'],
+            'name'        => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9 _-]+$/'],
+            'abilities'   => ['sometimes', 'array'],
             'abilities.*' => ['string', 'max:32'],
-            'expires_at' => ['nullable', 'date', 'after:now'],
+            'expires_at'  => ['nullable', 'date', 'after:now'],
         ]);
 
         $token = $request->user()->createToken(
@@ -53,9 +53,9 @@ class ApiTokenController extends Controller
         return response()->json([
             'token' => $token->plainTextToken,
             'access_token' => [
-                'id' => $token->accessToken->id,
-                'name' => $token->accessToken->name,
-                'abilities' => $token->accessToken->abilities,
+                'id'         => $token->accessToken->id,
+                'name'       => $token->accessToken->name,
+                'abilities'  => $token->accessToken->abilities,
                 'expires_at' => $token->accessToken->expires_at,
                 'created_at' => $token->accessToken->created_at,
             ],

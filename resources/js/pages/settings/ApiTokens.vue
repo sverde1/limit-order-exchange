@@ -87,12 +87,20 @@ const createToken = async () => {
     errorMessage.value = null;
     newPlainTextToken.value = null;
 
+    const name = newTokenName.value.trim() || 'New API Key';
+
+    if (!/^[A-Za-z0-9 _-]+$/.test(name)) {
+        errorMessage.value = 'Name must be alphanumeric and may include spaces, dashes, or underscores.';
+        creating.value = false;
+        return;
+    }
+
     const response = await fetch('/settings/api-keys', {
         method: 'POST',
         credentials: 'same-origin',
         headers: await withAuthHeaders(),
         body: JSON.stringify({
-            name: newTokenName.value.trim() || 'New API Key',
+            name,
             abilities: ['*'],
         }),
     });
