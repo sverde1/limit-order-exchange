@@ -26,6 +26,7 @@ type ProfileResponse = {
         name: string;
         email: string;
         balance: string;
+        balance_locked: string;
     };
     assets: Asset[];
 };
