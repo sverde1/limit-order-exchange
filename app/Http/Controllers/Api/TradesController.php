@@ -17,6 +17,14 @@ class TradesController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'page'     => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        $perPage = $validated['per_page'] ?? 50;
+        $page    = $validated['page'] ?? 1;
+
         $userId = $request->user()->id;
 
         $trades = DB::table('trades as t')
@@ -27,7 +35,7 @@ class TradesController extends Controller
                     ->orWhere('so.user_id', $userId);
             })
             ->orderByDesc('t.matched_at')
-            ->limit(200)
+            ->forPage($page, $perPage)
             ->select([
                 't.id',
                 't.symbol',
@@ -60,6 +68,10 @@ class TradesController extends Controller
 
         return response()->json([
             'trades' => $trades,
+            'meta'   => [
+                'page'     => $page,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 }

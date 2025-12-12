@@ -23,6 +23,9 @@ type Trade = {
 const trades = ref<Trade[]>([]);
 const loading = ref(false);
 const errorMessage = ref('');
+const currentPage = ref(1);
+const perPage = ref(50);
+const meta = ref<{ page: number; per_page: number } | null>(null);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -54,11 +57,12 @@ const withAuthHeaders = async () => {
     return headers;
 };
 
-const loadTrades = async () => {
+const loadTrades = async (page?: number) => {
     loading.value = true;
     errorMessage.value = '';
+    const targetPage = page ?? currentPage.value;
 
-    const response = await fetch('/api/trades', {
+    const response = await fetch(`/api/trades?page=${targetPage}&per_page=${perPage.value}`, {
         credentials: 'same-origin',
         headers: await withAuthHeaders(),
     });
@@ -72,8 +76,19 @@ const loadTrades = async () => {
 
     const data = await response.json();
     trades.value = data.trades ?? [];
+    meta.value = data.meta ?? null;
+    currentPage.value = meta.value?.page ?? targetPage;
     loading.value = false;
 };
+
+const goToPage = async (page: number) => {
+    if (page < 1) return;
+    currentPage.value = page;
+    await loadTrades(page);
+};
+
+const canGoPrev = () => currentPage.value > 1;
+const canGoNext = () => trades.value.length >= perPage.value;
 
 const formatPrice = (price: string | number) => {
     const numericPrice = Number(price);
@@ -192,6 +207,27 @@ onMounted(async () => {
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="mt-3 flex items-center justify-end gap-2 text-sm text-muted-foreground">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="loading || !canGoPrev()"
+                                @click="goToPage(currentPage - 1)"
+                            >
+                                Previous
+                            </Button>
+                            <span class="px-2">
+                                Page {{ currentPage }} ({{ trades.length }} / {{ perPage }})
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="loading || !canGoNext()"
+                                @click="goToPage(currentPage + 1)"
+                            >
+                                Next
+                            </Button>
                         </div>
                     </div>
                 </CardContent>
