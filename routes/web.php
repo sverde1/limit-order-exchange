@@ -22,4 +22,8 @@ Route::get('trade/overview', function () {
     return Inertia::render('trade/OrdersOverview');
 })->middleware(['auth', 'verified'])->name('trade.overview');
 
+Route::get('trade/history', function () {
+    return Inertia::render('trade/TradeHistory');
+})->middleware(['auth', 'verified'])->name('trade.history');
+
 require __DIR__.'/settings.php';
