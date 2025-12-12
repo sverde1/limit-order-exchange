@@ -46,7 +46,7 @@ class OrdersController extends Controller
     {
         $validated = $request->validate([
             // Orderbook for selected symbol
-            'symbol' => ['required', 'string', 'max:16'],
+            'symbol' => ['required', 'string', 'max:16', 'regex:/^[\w\d]+$/'],
         ]);
 
         $symbol = isset($validated['symbol']) ? strtoupper($validated['symbol']) : null;
@@ -76,10 +76,10 @@ class OrdersController extends Controller
         $this->pendingEvents = [];
 
         $validated = $request->validate([
-            'symbol' => ['required', 'string', 'max:16'],
+            'symbol' => ['required', 'string', 'max:16', 'regex:/^[\w\d]+$/'],
             'side'   => ['required', 'in:buy,sell'],
-            'price'  => ['required', 'decimal:0,8', 'gt:0'],
-            'amount' => ['required', 'decimal:0,18', 'gt:0'],
+            'price'  => ['required', 'decimal:0,8', 'gt:0', 'max:9999999999.99999999'],
+            'amount' => ['required', 'decimal:0,18', 'gt:0', 'max:999999999999999999.999999999999999999'],
         ]);
 
         $symbol = isset($validated['symbol']) ? strtoupper($validated['symbol']) : null;

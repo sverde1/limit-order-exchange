@@ -36,7 +36,7 @@ class ApiTokenController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'        => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9 _-]+$/'],
+            'name'        => ['required', 'string', 'max:64', 'regex:/^[\w\d _-]+$/i'],
             'abilities'   => ['sometimes', 'array'],
             'abilities.*' => ['string', 'max:32'],
             'expires_at'  => ['nullable', 'date', 'after:now'],

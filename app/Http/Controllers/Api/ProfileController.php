@@ -57,9 +57,9 @@ class ProfileController extends Controller
         }
 
         $validated = $request->validate([
-            'balance' => ['nullable', 'numeric', 'min:0'],
-            'symbol'  => ['nullable', 'string', 'max:16'],
-            'amount'  => ['nullable', 'numeric', 'min:0'],
+            'balance' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'symbol'  => ['nullable', 'string', 'max:16', 'regex:/^[\w\d]{1,16}$/i'],
+            'amount'  => ['nullable', 'numeric', 'min:0', 'max:999999999999999999.999999999999999999'],
         ]);
 
         $user = $request->user();
