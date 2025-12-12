@@ -76,6 +76,7 @@ const loadingOrderbook = ref(false);
 const errorMessage = ref('');
 
 const usdBalance = computed(() => profile.value?.user.balance ?? '0.00');
+const usdLockedBalance = computed(() => profile.value?.user.balance_locked ?? '0.00');
 const assetBalances = computed(() => profile.value?.assets ?? []);
 const orderFilterSymbol = ref<string | 'all'>('all');
 const orderFilterSide = ref<string | 'all'>('all');
@@ -632,13 +633,14 @@ watch(selectedSymbol, async () => {
                         </div>
                     </CardHeader>
                     <CardContent class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-muted-foreground"
-                                >USD Balance</span
-                            >
-                            <span class="font-semibold"
-                                >${{ usdBalance }}</span
-                            >
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="font-medium">USD Balance</span>
+                            <div class="text-right">
+                                <div>${{ usdBalance }} available</div>
+                                <div class="text-xs text-muted-foreground">
+                                    ${{ usdLockedBalance }} locked
+                                </div>
+                            </div>
                         </div>
                         <Separator />
                         <div class="space-y-2">

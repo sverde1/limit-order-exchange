@@ -22,12 +22,23 @@ class ProfileController extends Controller
             'assets:id,user_id,symbol,amount,locked_amount',
         ]);
 
+        $lockedBalance = Order::query()
+            ->where('user_id', $user->id)
+            ->where('side', Order::SIDE_BUY)
+            ->where('status', Order::STATUS_OPEN)
+            ->get()
+            ->reduce(function ($carry, $order) {
+                $total = bcmul($order->price, $order->amount, 18);
+                return bcadd($carry, $total, 2);
+            }, '0.00');
+
         return response()->json([
             'user' => [
-                'id'      => $user->id,
-                'name'    => $user->name,
-                'email'   => $user->email,
-                'balance' => $user->balance,
+                'id'             => $user->id,
+                'name'           => $user->name,
+                'email'          => $user->email,
+                'balance'        => $user->balance,
+                'balance_locked' => $lockedBalance,
             ],
             'assets' => $user->assets,
         ]);
