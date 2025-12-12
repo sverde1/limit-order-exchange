@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\OrderBookUpdated;
 use App\Events\OrderMatched;
+use App\Events\UserBalancesUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Order;
@@ -130,12 +131,23 @@ class OrdersController extends Controller
             if ($matchResult) {
                 $order = $matchResult['taker_order'];
 
+                // dispatch events
+                // first dispatch OrderMatched event to show recent matched orders
                 $this->queueMatchedOrder($matchResult['payload']);
 
+                // then dispatch OrderBookUpdated event to update order book entries
                 $this->queueBookEvent($matchResult['taker_order'], 'filled');
                 $this->queueBookEvent($matchResult['maker_order'], 'filled');
+
+                // finally dispatch UserBalancesUpdated event to update user balances
+                $this->queueBalancesUpdate($matchResult['taker_order']->user_id);
+                $this->queueBalancesUpdate($matchResult['maker_order']->user_id);
             } else {
+                // dispatch OrderBookUpdated event to update order book entries
                 $this->queueBookEvent($order, 'open');
+
+                // finally dispatch UserBalancesUpdated event to update user balances
+                $this->queueBalancesUpdate($order->user_id);
             }
 
             return $order;
@@ -201,6 +213,7 @@ class OrdersController extends Controller
         });
 
         $this->queueBookEvent($order, 'canceled');
+        $this->queueBalancesUpdate($order->user_id);
         $this->dispatchEvents();
 
         return response()->json([
@@ -386,6 +399,32 @@ class OrdersController extends Controller
     }
 
     /**
+     * Queue balance update payload for a user.
+     *
+     * @param int $userId
+     * @return void
+     */
+    protected function queueBalancesUpdate(int $userId): void
+    {
+        $user = User::whereKey($userId)
+            ->with('assets:id,user_id,symbol,amount,locked_amount')
+            ->first();
+
+        if (! $user) {
+            return;
+        }
+
+        $this->pendingEvents[] = [
+            'type'    => 'balances',
+            'payload' => [
+                'user_id' => $user->id,
+                'balance' => $user->balance,
+                'assets'  => $user->assets,
+            ],
+        ];
+    }
+
+    /**
      * Enqueue an order book event for later broadcast.
      *
      * @param Order $order
@@ -456,6 +495,14 @@ class OrdersController extends Controller
                         $payload['seller_id'],
                         $payload['buy_status'],
                         $payload['sell_status'],
+                    ));
+                    break;
+                case 'balances':
+                    $payload = $event['payload'];
+                    event(new UserBalancesUpdated(
+                        $payload['user_id'],
+                        $payload['balance'],
+                        $payload['assets'],
                     ));
                     break;
             }
