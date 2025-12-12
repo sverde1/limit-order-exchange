@@ -71,13 +71,13 @@ class OrderMatchingTest extends TestCase
         $sellerAsset = Asset::where('user_id', $seller->id)->where('symbol', 'BTC')->first();
         $buyerAsset  = Asset::where('user_id', $buyer->id)->where('symbol', 'BTC')->first();
 
-        // Seller sold 0.1 BTC at maker price 30000, buyer pays commission
+        // Seller sold 0.1 BTC at maker price 30000 and pays commission (1.5%)
         $this->assertEquals('0.900000000000000000', $sellerAsset->amount);
         $this->assertEquals('0.000000000000000000', $sellerAsset->locked_amount);
-        $this->assertEquals('3000.00', $seller->balance);
+        $this->assertEquals('2955.00', $seller->balance);
 
-        // Buyer gets refunded the difference between bid (3500) and trade (3000), then pays commission
-        $this->assertEquals('6955.00', $buyer->balance);
+        // Buyer gets refunded the difference between bid (3500) and trade (3000), no commission
+        $this->assertEquals('7000.00', $buyer->balance);
         $this->assertEquals('0.100000000000000000', $buyerAsset->amount);
 
         // Commission credited to admin (1.5% of 3000 = 45)

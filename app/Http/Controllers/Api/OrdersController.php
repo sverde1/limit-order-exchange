@@ -16,13 +16,6 @@ use Illuminate\Validation\ValidationException;
 class OrdersController extends Controller
 {
     /**
-     * Commission rate applied to buyer on successful match.
-     *
-     * @var float
-     */
-    private float $commissionRate = 0.015;
-
-    /**
      * Admin user ID to receive commission.
      *
      * @var int
@@ -55,7 +48,7 @@ class OrdersController extends Controller
             ->select('id', 'symbol', 'side', 'price', 'amount')
             ->where('symbol', $symbol)
             ->where('status', Order::STATUS_OPEN)
-            ->orderByDesc('created_at')
+            ->orderBy('created_at')
             ->get();
 
         return response()->json([
@@ -282,8 +275,10 @@ class OrdersController extends Controller
         $tradeValue     = bcmul($matchedPrice, $matchedAmount, 18);
         $tradeValueCash = $this->formatMoney($tradeValue);
 
-        $commissionRaw = bcmul($tradeValue, (string) $this->commissionRate, 18);
-        $commission    = $this->formatMoney($commissionRaw);
+        // Calculate commission based on config
+        $commissionRate = (float) config('trading.commission_rate', 0.015);
+        $commissionRaw  = bcmul($tradeValue, (string) $commissionRate, 18);
+        $commission     = $this->formatMoney($commissionRaw);
 
         // Buyer reserved at bid price when order was placed; refund any over-reserved amount.
         $buyerBidValueRaw = bcmul($buyerOrder->price, $matchedAmount, 18);
@@ -295,17 +290,12 @@ class OrdersController extends Controller
             $buyer->balance = bcadd($buyer->balance ?? '0', $refund, 2);
         }
 
-        // Debit buyer commission
-        if (bccomp($buyer->balance ?? '0', $commission, 2) < 0) {
-            throw ValidationException::withMessages([
-                'balance' => 'Buyer has insufficient balance for commission.',
-            ]);
-        }
-        $buyer->balance = bcsub($buyer->balance ?? '0', $commission, 2);
         $buyer->save();
 
-        // Credit seller USD at executed value
-        $seller->balance = bcadd($seller->balance ?? '0', $tradeValueCash, 2);
+        // Credit seller USD at executed value minus commission
+        $sellerPayoutRaw = bcsub($tradeValueCash, $commission, 18);
+        $sellerPayout    = $this->formatMoney($sellerPayoutRaw);
+        $seller->balance = bcadd($seller->balance ?? '0', $sellerPayout, 2);
         $seller->save();
 
         // Credit admin commission
