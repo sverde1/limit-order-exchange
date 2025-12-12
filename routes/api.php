@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
-    Route::post('/profile/reset-wallet', [ProfileController::class, 'resetWallet']);
+    Route::post('/profile/add-demo-assets', [ProfileController::class, 'addDemoAssets']);
     Route::get('/profile/orders', [ProfileController::class, 'orders']);
 
     Route::get('/orders', [OrdersController::class, 'index']);

@@ -11,6 +11,7 @@ import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 
 type Asset = {
@@ -66,7 +67,6 @@ const orderbook = ref<Orderbook>({
 const recentTrades = ref<Trade[]>([]);
 const cancelingOrderIds = ref<number[]>([]);
 const currentUserId = computed(() => page.props.auth.user.id);
-
 const loadingProfile = ref(false);
 const loadingOrders = ref(false);
 const loadingOrderbook = ref(false);
@@ -74,6 +74,12 @@ const errorMessage = ref('');
 
 const usdBalance = computed(() => profile.value?.user.balance ?? '0.00');
 const assetBalances = computed(() => profile.value?.assets ?? []);
+const demoMenuOpen = ref(false);
+const demoBalance = ref('10000');
+const demoAssetName = ref('BTC');
+const demoAssetAmount = ref('0.1');
+const demoLoadingBalance = ref(false);
+const demoLoadingAsset = ref(false);
 
 const xsrfToken = () => {
     const match = document.cookie
@@ -164,24 +170,76 @@ const refreshAll = async () => {
     await Promise.all([loadProfile(), loadOrders(), loadOrderbook()]);
 };
 
-const resetWallet = async () => {
-    const resetWalletUrl = new URL(
-        '/api/profile/reset-wallet',
-        window.location.origin,
-    ).toString();
+const addDemoBalance = async () => {
+    demoLoadingBalance.value = true;
+    errorMessage.value = '';
 
-    const response = await fetch(resetWalletUrl, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: await withAuthHeaders(),
-    });
+    const balanceNum = Number(demoBalance.value);
 
-    if (!response.ok) {
-        errorMessage.value = 'Unable to reset wallet.';
+    if (!Number.isFinite(balanceNum) || balanceNum <= 0) {
+        errorMessage.value = 'Enter a valid balance amount.';
+        demoLoadingBalance.value = false;
         return;
     }
 
+    const response = await fetch('/api/profile/add-demo-assets', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: await withAuthHeaders(),
+        body: JSON.stringify({
+            balance: balanceNum,
+            symbol: null,
+            amount: 0,
+        }),
+    });
+
+    if (!response.ok) {
+        errorMessage.value = 'Unable to add demo USD.';
+        demoLoadingBalance.value = false;
+        return;
+    }
+
+    demoBalance.value = '10000';
+    demoMenuOpen.value = false;
+    demoLoadingBalance.value = false;
+
+    await loadProfile();
+};
+
+const addDemoAssets = async () => {
+    demoLoadingAsset.value = true;
     errorMessage.value = '';
+
+    const assetAmountNum = Number(demoAssetAmount.value);
+    const assetName = demoAssetName.value.trim().toUpperCase();
+
+    if (assetName.length === 0 || !Number.isFinite(assetAmountNum) || assetAmountNum < 0) {
+        errorMessage.value = 'Enter a valid asset and amount.';
+        demoLoadingAsset.value = false;
+        return;
+    }
+
+    const response = await fetch('/api/profile/add-demo-assets', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: await withAuthHeaders(),
+        body: JSON.stringify({
+            balance: 0,
+            symbol: assetName,
+            amount: assetAmountNum,
+        }),
+    });
+
+    if (!response.ok) {
+        errorMessage.value = 'Unable to add demo assets.';
+        demoLoadingAsset.value = false;
+        return;
+    }
+
+    demoAssetAmount.value = '0.00';
+    demoMenuOpen.value = false;
+    demoLoadingAsset.value = false;
+
     await loadProfile();
 };
 
@@ -208,7 +266,16 @@ const cancelOrder = async (orderId: number) => {
     });
 
     if (response.ok) {
-        await Promise.all([loadOrders(), loadOrderbook()]);
+        const data = await response.json().catch(() => ({}));
+        const updatedOrder = data.order as Order | undefined;
+
+        if (updatedOrder) {
+            const idx = orders.value.findIndex((o) => o.id === updatedOrder.id);
+            if (idx !== -1) {
+                orders.value[idx] = { ...orders.value[idx], status: updatedOrder.status };
+            }
+        }
+
         errorMessage.value = '';
     } else {
         errorMessage.value = 'Unable to cancel order.';
@@ -329,10 +396,95 @@ watch(selectedSymbol, async () => {
             <div class="grid gap-4 lg:grid-cols-3">
                 <Card class="lg:col-span-1">
                     <CardHeader>
-                        <CardTitle>Wallet</CardTitle>
-                        <CardDescription>
-                            USD and asset balances
-                        </CardDescription>
+                        <div
+                            class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
+                        >
+                            <div>
+                                <CardTitle>Wallet</CardTitle>
+                                <CardDescription>
+                                    USD and asset balances
+                                </CardDescription>
+                            </div>
+                            <div class="relative">
+                                <div
+                                    class="flex items-center gap-2"
+                                    @click="demoMenuOpen = !demoMenuOpen"
+                                >
+                                    <Button variant="outline" size="sm" title="This is only for demo purposes">
+                                        Set DEMO assets
+                                    </Button>
+                                </div>
+                                <div
+                                    v-if="demoMenuOpen"
+                                    class="absolute right-[-10rem] z-10 mt-2 w-[30rem] rounded-md border border-border bg-popover p-3 shadow-lg"
+                                >
+                                    <div class="flex items-center justify-end">
+                                        <button
+                                            type="button"
+                                            class="text-xs text-muted-foreground hover:text-foreground"
+                                            @click="demoMenuOpen = false"
+                                            aria-label="Close"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <div class="text-xs text-muted-foreground mb-2">
+                                        Quickly top up balances for testing.
+                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="flex flex-col gap-2">
+                                            <label class="text-sm font-medium text-muted-foreground">
+                                                Add USD balance
+                                            </label>
+                                            <div class="flex items-center gap-2">
+                                                <Input
+                                                    v-model="demoBalance"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="h-9 flex-1 border border-input bg-muted/30 text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-ring"
+                                                />
+                                            <Button
+                                                size="sm"
+                                                :disabled="demoLoadingBalance"
+                                                @click="addDemoBalance"
+                                            >
+                                                {{ demoLoadingBalance ? 'Adding…' : 'Add' }}
+                                            </Button>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-col gap-2">
+                                            <label class="text-sm font-medium text-muted-foreground">
+                                                Add asset balance
+                                            </label>
+                                            <div class="flex items-center gap-2">
+                                                <select
+                                                    v-model="demoAssetName"
+                                                    class="h-9 w-24 rounded-md border border-input bg-muted/30 px-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                >
+                                                    <option value="BTC">BTC</option>
+                                                    <option value="ETH">ETH</option>
+                                                </select>
+                                                <Input
+                                                    v-model="demoAssetAmount"
+                                                    type="number"
+                                                    step="0.00000001"
+                                                    min="0"
+                                                    class="h-9 flex-1 border border-input bg-muted/30 text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-ring"
+                                                />
+                                                <Button
+                                                    size="sm"
+                                                    :disabled="demoLoadingAsset"
+                                                    @click="addDemoAssets"
+                                                >
+                                                    {{ demoLoadingAsset ? 'Adding…' : 'Add' }}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent class="space-y-3">
                         <div class="flex items-center justify-between">
@@ -342,16 +494,6 @@ watch(selectedSymbol, async () => {
                             <span class="font-semibold"
                                 >${{ usdBalance }}</span
                             >
-                        </div>
-                        <div class="flex items-center justify-end">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                @click="resetWallet"
-                                title="This is for demo purposes only"
-                            >
-                                Reset wallet balance to $10k
-                            </Button>
                         </div>
                         <Separator />
                         <div class="space-y-2">
@@ -430,6 +572,12 @@ watch(selectedSymbol, async () => {
                                         <td class="px-2 py-2">
                                             <Badge
                                                 :variant="statusVariant(order.status) as any"
+                                                :class="{
+                                                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-100':
+                                                        order.status === 2,
+                                                    'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-100':
+                                                        order.status === 3,
+                                                }"
                                             >
                                                 {{ statusLabel(order.status) }}
                                             </Badge>

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asset;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -37,19 +39,48 @@ class ProfileController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function resetWallet(Request $request)
+    public function addDemoAssets(Request $request)
     {
         if (! extension_loaded('bcmath')) {
             abort(500, 'BCMath PHP extension is required to process funds.');
         }
 
+        $validated = $request->validate([
+            'balance' => ['nullable', 'numeric', 'min:0'],
+            'symbol'  => ['nullable', 'string', 'max:16'],
+            'amount'  => ['nullable', 'numeric', 'min:0'],
+        ]);
+
         $user = $request->user();
-        $user->balance = 10000;
-        $user->save();
+
+        DB::transaction(function () use ($user, $validated) {
+            if (isset($validated['balance']) && $validated['balance'] > 0) {
+                $current       = $user->balance ?? 0;
+                $user->balance = bcadd((string) $current, (string) $validated['balance'], 2);
+                $user->save();
+            }
+
+            if (
+                isset($validated['symbol'], $validated['amount']) &&
+                $validated['symbol'] &&
+                $validated['amount'] > 0
+            ) {
+                $symbol = strtoupper($validated['symbol']);
+                $asset = Asset::firstOrNew([
+                    'user_id' => $user->id,
+                    'symbol'  => $symbol,
+                ]);
+
+                $asset->amount = bcadd((string) ($asset->amount ?? 0), (string) $validated['amount'], 18);
+                $asset->locked_amount = $asset->locked_amount ?? 0;
+                $asset->save();
+            }
+        });
 
         return response()->json([
-            'message' => 'Wallet reset to $10k.',
+            'message' => 'Demo balances updated.',
             'balance' => $user->balance,
+            'assets'  => $user->fresh()->assets,
         ]);
     }
 
