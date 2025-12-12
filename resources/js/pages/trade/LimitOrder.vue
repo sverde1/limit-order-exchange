@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { limitOrder } from '@/routes/trade';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type Errors = Record<string, string>;
+
+type Asset = {
+    symbol: string;
+    amount: string;
+    locked_amount: string;
+};
+
+type ProfileResponse = {
+    user: {
+        id: number;
+        name: string;
+        email: string;
+        balance: string;
+        balance_locked?: string;
+    };
+    assets: Asset[];
+};
 
 const symbols = ['BTC', 'ETH'];
 const sides = ['buy', 'sell'];
@@ -26,6 +43,7 @@ const form = reactive({
 const loading = ref(false);
 const message = ref('');
 const errors = ref<Errors>({});
+const profile = ref<ProfileResponse | null>(null);
 
 const xsrfToken = () => {
     const match = document.cookie
@@ -43,6 +61,17 @@ const withAuthHeaders = async () => {
         'Content-Type': 'application/json',
         'X-XSRF-TOKEN': xsrfToken(),
     };
+};
+
+const loadProfile = async () => {
+    const response = await fetch('/api/profile', {
+        credentials: 'same-origin',
+        headers: await withAuthHeaders(),
+    });
+
+    if (response.ok) {
+        profile.value = await response.json();
+    }
 };
 
 const placeOrder = async () => {
@@ -80,6 +109,29 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: limitOrder().url,
     },
 ];
+
+const availableBalance = computed(() => profile.value?.user.balance ?? '0.00');
+const availableAsset = computed(() => {
+    const asset = profile.value?.assets.find(
+        (a) => a.symbol === form.symbol,
+    );
+    return asset?.amount ?? '0';
+});
+
+onMounted(async () => {
+    await loadProfile();
+});
+const orderValue = computed(() => {
+    const priceNum = Number(form.price);
+    const amountNum = Number(form.amount);
+
+    if (!Number.isFinite(priceNum) || !Number.isFinite(amountNum)) {
+        return '0.00';
+    }
+
+    const value = priceNum * amountNum;
+    return value.toFixed(2);
+});
 </script>
 
 <template>
@@ -187,6 +239,28 @@ const breadcrumbs: BreadcrumbItem[] = [
                             >
                                 {{ errors.amount }}
                             </p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                        Order value:
+                        <span class="font-semibold text-foreground"
+                            >${{ orderValue }}</span
+                        >
+                        <span class="ml-1">({{ form.amount || 0 }} {{ form.symbol }})</span>
+                    </div>
+                    <div class="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                        <div class="flex items-center justify-between">
+                            <span>Available balance</span>
+                            <span class="text-foreground font-semibold">
+                                ${{ availableBalance }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Available {{ form.symbol }}</span>
+                            <span class="text-foreground font-semibold">
+                                {{ availableAsset }} {{ form.symbol }}
+                            </span>
                         </div>
                     </div>
 
