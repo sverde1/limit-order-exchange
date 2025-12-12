@@ -83,3 +83,8 @@ server {
 
 ## Build
 - Production assets: `npm run build`
+
+## Testing
+- Run the full test suite:
+  - `php artisan test`
+  - `composer test`
