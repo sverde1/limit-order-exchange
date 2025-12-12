@@ -144,7 +144,7 @@ const loadOrders = async () => {
 };
 
 const loadOrderbook = async () => {
-    loadingOrders.value = true;
+    loadingOrderbook.value = true;
     const response = await fetch(`/api/orders?symbol=${selectedSymbol.value}`, {
         credentials: 'same-origin',
         headers: await withAuthHeaders(false),
@@ -164,10 +164,6 @@ const loadOrderbook = async () => {
     }
 
     loadingOrderbook.value = false;
-};
-
-const refreshAll = async () => {
-    await Promise.all([loadProfile(), loadOrders(), loadOrderbook()]);
 };
 
 const addDemoBalance = async () => {
@@ -364,7 +360,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 onMounted(async () => {
-    await refreshAll();
+    await Promise.all([loadProfile(), loadOrders(), loadOrderbook()]);
     cleanup.value = await setupOrderMatchedListener();
 });
 
@@ -644,7 +640,7 @@ watch(selectedSymbol, async () => {
                                         {{ sym }}
                                     </option>
                                 </select>
-                                <Button size="sm" variant="outline" @click="refreshAll">
+                                <Button size="sm" variant="outline" @click="loadOrderbook">
                                     Refresh
                                 </Button>
                             </div>
