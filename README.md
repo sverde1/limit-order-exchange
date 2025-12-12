@@ -8,25 +8,29 @@ This project is a Laravel 12 + Vue 3 (Inertia) application for managing limit or
 - Database (MySQL/PostgreSQL) with migrations applied (`php artisan migrate`).
 
 ## Setup
-1. Install dependencies:
+1. Verify PHP has the `bcmath` extension; if missing, install it:
+   ```bash
+   php -m | grep bcmath
+   ```
+2. Install dependencies:
    ```bash
    composer install
    npm install
    ```
-2. Copy env and set keys/DB:
+3. Copy env and set keys/DB:
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
-3. Run migrations:
+4. Run migrations:
    ```bash
    php artisan migrate
    ```
-4. Serve the app (example):
+5. Serve the app (example):
    ```bash
    php artisan serve
    ```
-5. Configure Pusher broadcasting in `.env`:
+6. Configure Pusher broadcasting in `.env`:
    ```bash
    BROADCAST_CONNECTION=pusher
 
@@ -38,7 +42,7 @@ This project is a Laravel 12 + Vue 3 (Inertia) application for managing limit or
    VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
    VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
    ```
-6. Refresh config cache after updating `.env`:
+7. Refresh config cache after updating `.env`:
    ```bash
    php artisan config:clear
    ```
