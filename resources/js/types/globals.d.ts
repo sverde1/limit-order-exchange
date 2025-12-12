@@ -24,3 +24,5 @@ declare module 'vue' {
         $headManager: ReturnType<typeof createHeadManager>;
     }
 }
+
+declare module 'pusher-js';
