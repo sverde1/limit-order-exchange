@@ -14,6 +14,7 @@ class OrderBookUpdated implements ShouldBroadcastNow
     /**
      * @param string $action "add"|"remove"
      * @param int $orderId
+     * @param int|null $actorId
      * @param string $symbol
      * @param string $side
      * @param string $price
@@ -23,6 +24,7 @@ class OrderBookUpdated implements ShouldBroadcastNow
     public function __construct(
         public readonly string $action,
         public readonly int $orderId,
+        public readonly ?int $actorId,
         public readonly string $symbol,
         public readonly string $side,
         public readonly string $price,
@@ -49,7 +51,7 @@ class OrderBookUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel("orderbook.{$this->symbol}"),
+            new Channel('orderbook'),
         ];
     }
 
@@ -63,6 +65,7 @@ class OrderBookUpdated implements ShouldBroadcastNow
         return [
             'action'   => $this->action,
             'order_id' => $this->orderId,
+            'actor_id' => $this->actorId,
             'symbol'   => $this->symbol,
             'side'     => $this->side,
             'price'    => $this->price,

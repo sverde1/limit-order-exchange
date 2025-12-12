@@ -345,7 +345,7 @@ const handleOrderBookUpdated = (payload: any) => {
     if (action === 'open') {
         const newOrder = {
             id: orderId,
-            user_id: 0,
+            user_id: payload.actor_id ?? 0,
             symbol: payload.symbol,
             side,
             price,
@@ -422,7 +422,7 @@ const setupOrderBookUpdatedListener = async () => {
         bookChannel.value = null;
     }
 
-    const channelName = `orderbook.${selectedSymbol.value}`;
+    const channelName = 'orderbook';
     const channel = pusher.subscribe(channelName);
     channel.bind('OrderBookUpdated', handleOrderBookUpdated);
     bookChannel.value = channel;
@@ -499,8 +499,6 @@ onBeforeUnmount(() => {
 
 watch(selectedSymbol, async () => {
     await loadOrderbook();
-    bookCleanup.value?.();
-    bookCleanup.value = await setupOrderBookUpdatedListener();
 });
 </script>
 

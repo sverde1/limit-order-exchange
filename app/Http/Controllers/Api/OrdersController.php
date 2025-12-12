@@ -136,15 +136,15 @@ class OrdersController extends Controller
                 $this->queueMatchedOrder($matchResult['payload']);
 
                 // then dispatch OrderBookUpdated event to update order book entries
-                $this->queueBookEvent($matchResult['taker_order'], 'filled');
-                $this->queueBookEvent($matchResult['maker_order'], 'filled');
+                $this->queueBookEvent($matchResult['taker_order'], 'filled', $userId);
+                $this->queueBookEvent($matchResult['maker_order'], 'filled', $userId);
 
                 // finally dispatch UserBalancesUpdated event to update user balances
                 $this->queueBalancesUpdate($matchResult['taker_order']->user_id);
                 $this->queueBalancesUpdate($matchResult['maker_order']->user_id);
             } else {
                 // dispatch OrderBookUpdated event to update order book entries
-                $this->queueBookEvent($order, 'open');
+                $this->queueBookEvent($order, 'open', $userId);
 
                 // finally dispatch UserBalancesUpdated event to update user balances
                 $this->queueBalancesUpdate($order->user_id);
@@ -431,13 +431,14 @@ class OrdersController extends Controller
      * @param string $action "add"|"remove"
      * @return void
      */
-    protected function queueBookEvent(Order $order, string $action): void
+    protected function queueBookEvent(Order $order, string $action, ?int $actorId = null): void
     {
         $this->pendingEvents[] = [
             'type'    => 'orderbook',
             'payload' => [
                 'order'  => $order,
                 'action' => $action,
+                'actor_id' => $actorId,
             ],
         ];
     }
@@ -469,10 +470,12 @@ class OrdersController extends Controller
                     /** @var Order $order */
                     $order  = $event['payload']['order'];
                     $action = $event['payload']['action'];
+                    $actorId = $event['payload']['actor_id'] ?? null;
 
                     event(new OrderBookUpdated(
                         $action,
                         $order->id,
+                        $actorId,
                         $order->symbol,
                         $order->side,
                         (string) $order->price,
