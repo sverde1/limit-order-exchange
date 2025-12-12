@@ -39,6 +39,7 @@ type Order = {
     amount: string;
     status: number;
     created_at?: string;
+    highlight?: 'open' | 'filled' | 'canceled';
 };
 
 type Orderbook = {
@@ -342,7 +343,7 @@ const handleOrderBookUpdated = (payload: any) => {
     const target = side === 'buy' ? orderbook.value.buys : orderbook.value.sells;
 
     if (action === 'open') {
-        target.push({
+        const newOrder = {
             id: orderId,
             user_id: 0,
             symbol: payload.symbol,
@@ -350,11 +351,29 @@ const handleOrderBookUpdated = (payload: any) => {
             price,
             amount,
             status: 1,
-        } as Order);
+            highlight: 'open',
+        } as Order;
+        target.push(newOrder);
+
+        window.setTimeout(() => {
+            const idx = target.findIndex((o) => o.id === newOrder.id);
+            if (idx !== -1) {
+                target[idx].highlight = undefined;
+            }
+        }, 500);
     } else if (action === 'filled' || action === 'canceled') {
         const idx = target.findIndex((o) => o.id === orderId);
         if (idx !== -1) {
-            target.splice(idx, 1);
+            target[idx] = {
+                ...target[idx],
+                highlight: action === 'filled' ? 'filled' : 'canceled',
+            };
+            window.setTimeout(() => {
+                const removeIdx = target.findIndex((o) => o.id === orderId);
+                if (removeIdx !== -1) {
+                    target.splice(removeIdx, 1);
+                }
+            }, 500);
         }
     }
 };
@@ -738,15 +757,22 @@ watch(selectedSymbol, async () => {
                             >
                                 No buy orders.
                             </div>
-                            <div
-                                v-for="order in orderbook.buys"
-                                :key="order.id"
-                                class="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
-                            >
-                                <span>${{ formatPrice(order.price) }}</span>
-                                <span>{{ order.amount }}</span>
-                            </div>
+                        <div
+                            v-for="order in orderbook.buys"
+                            :key="order.id"
+                            class="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm transition-colors"
+                            :class="{
+                                'bg-muted/50': order.highlight === 'open',
+                                'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-50':
+                                    order.highlight === 'filled',
+                                'bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-50':
+                                    order.highlight === 'canceled',
+                            }"
+                        >
+                            <span>${{ formatPrice(order.price) }}</span>
+                            <span>{{ order.amount }}</span>
                         </div>
+                    </div>
                         <div>
                             <h4 class="mb-2 text-sm font-semibold text-muted-foreground">
                                 Asks (Sell)
@@ -757,14 +783,21 @@ watch(selectedSymbol, async () => {
                             >
                                 No sell orders.
                             </div>
-                            <div
-                                v-for="order in orderbook.sells"
-                                :key="order.id"
-                                class="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
-                            >
-                                <span>${{ formatPrice(order.price) }}</span>
-                                <span>{{ order.amount }}</span>
-                            </div>
+                        <div
+                            v-for="order in orderbook.sells"
+                            :key="order.id"
+                            class="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm transition-colors"
+                            :class="{
+                                'bg-muted/50': order.highlight === 'open',
+                                'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-50':
+                                    order.highlight === 'filled',
+                                'bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-50':
+                                    order.highlight === 'canceled',
+                            }"
+                        >
+                            <span>${{ formatPrice(order.price) }}</span>
+                            <span>{{ order.amount }}</span>
+                        </div>
                         </div>
                     </CardContent>
                 </Card>
