@@ -12,5 +12,6 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/orders', [OrdersController::class, 'index']);
     Route::post('/orders', [OrdersController::class, 'create']);
     Route::post('/orders/{order}/cancel', [OrdersController::class, 'cancel']);
-    Route::get('/orders/test-pusher', [OrdersController::class, 'pusherTest']);
+    // Route for testing Pusher events, development only
+    // Route::get('/orders/test-pusher', [OrdersController::class, 'pusherTest']);
 });
