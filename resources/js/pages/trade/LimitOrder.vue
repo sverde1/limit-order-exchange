@@ -141,7 +141,7 @@ const orderValue = computed(() => {
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
             <HeadingSmall
                 title="Limit Order"
-                description="Place a limit order for BTC or ETH."
+                description="Place a limit order."
             />
 
             <Card class="max-w-2xl">
@@ -205,24 +205,7 @@ const orderValue = computed(() => {
                         </div>
                     </div>
 
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div class="space-y-2">
-                            <Label for="price">Price (USD)</Label>
-                            <Input
-                                id="price"
-                                v-model="form.price"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                placeholder="25000"
-                            />
-                            <p
-                                v-if="errors.price"
-                                class="text-sm text-destructive"
-                            >
-                                {{ errors.price }}
-                            </p>
-                        </div>
+                    <div class="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
                         <div class="space-y-2">
                             <Label for="amount">Amount</Label>
                             <Input
@@ -238,6 +221,28 @@ const orderValue = computed(() => {
                                 class="text-sm text-destructive"
                             >
                                 {{ errors.amount }}
+                            </p>
+                        </div>
+
+                        <div class="flex items-center justify-center pb-6 text-lg font-semibold text-muted-foreground md:pb-3">
+                            @
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="price">Price (USD)</Label>
+                            <Input
+                                id="price"
+                                v-model="form.price"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="25000"
+                            />
+                            <p
+                                v-if="errors.price"
+                                class="text-sm text-destructive"
+                            >
+                                {{ errors.price }}
                             </p>
                         </div>
                     </div>
