@@ -43,6 +43,37 @@ This project is a Laravel 12 + Vue 3 (Inertia) application for managing limit or
    php artisan config:clear
    ```
 
+## Optional Nginx Snippet
+Example server block (adjust host, paths, and PHP-FPM socket for your environment):
+```
+server {
+    listen 80;
+    server_name your-domain.test;
+
+    root /path/to/limit-order-exchange/public;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+
+    location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|woff|woff2|ttf|otf)$ {
+        try_files $uri =404;
+        expires max;
+        log_not_found off;
+    }
+
+    location ~* /\. {
+        deny all;
+    }
+}
+```
+
 ## API Access with Tokens
 - API routes are protected by Sanctum. Generate personal access tokens from **Settings → API Keys** in the UI.
 - Copy the token once and use it in requests:
