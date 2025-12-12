@@ -29,24 +29,22 @@ class ProfileControllerTest extends TestCase
             'locked_amount' => '0.250000000000000000',
         ]);
 
-        Order::create([
-            'user_id'    => $user->id,
-            'symbol'     => 'BTC',
-            'side'       => Order::SIDE_BUY,
-            'price'      => '10.00000000',
-            'amount'     => '2.000000000000000000',
-            'status'     => Order::STATUS_OPEN,
-            'created_at' => now(),
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'symbol'  => 'BTC',
+            'side'    => Order::SIDE_BUY,
+            'price'   => '10.00000000',
+            'amount'  => '2.000000000000000000',
+            'status'  => Order::STATUS_OPEN,
         ]);
 
-        Order::create([
-            'user_id'    => $user->id,
-            'symbol'     => 'ETH',
-            'side'       => Order::SIDE_BUY,
-            'price'      => '5.50000000',
-            'amount'     => '1.000000000000000000',
-            'status'     => Order::STATUS_OPEN,
-            'created_at' => now(),
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'symbol'  => 'ETH',
+            'side'    => Order::SIDE_BUY,
+            'price'   => '5.50000000',
+            'amount'  => '1.000000000000000000',
+            'status'  => Order::STATUS_OPEN,
         ]);
 
         Sanctum::actingAs($user, abilities: ['*']);
@@ -131,34 +129,31 @@ class ProfileControllerTest extends TestCase
         $other = User::factory()->create();
 
         $ownedOrders = [
-            Order::create([
-                'user_id'    => $user->id,
-                'symbol'     => 'BTC',
-                'side'       => Order::SIDE_BUY,
-                'price'      => '1.00000000',
-                'amount'     => '1.000000000000000000',
-                'status'     => Order::STATUS_OPEN,
-                'created_at' => now(),
+            Order::factory()->create([
+                'user_id' => $user->id,
+                'symbol'  => 'BTC',
+                'side'    => Order::SIDE_BUY,
+                'price'   => '1.00000000',
+                'amount'  => '1.000000000000000000',
+                'status'  => Order::STATUS_OPEN,
             ]),
-            Order::create([
-                'user_id'    => $user->id,
-                'symbol'     => 'ETH',
-                'side'       => Order::SIDE_SELL,
-                'price'      => '2.00000000',
-                'amount'     => '2.000000000000000000',
-                'status'     => Order::STATUS_CANCELED,
-                'created_at' => now()->subMinute(),
+            Order::factory()->create([
+                'user_id' => $user->id,
+                'symbol'  => 'ETH',
+                'side'    => Order::SIDE_SELL,
+                'price'   => '2.00000000',
+                'amount'  => '2.000000000000000000',
+                'status'  => Order::STATUS_CANCELED,
             ]),
         ];
 
-        Order::create([
-            'user_id'    => $other->id,
-            'symbol'     => 'BTC',
-            'side'       => Order::SIDE_BUY,
-            'price'      => '3.00000000',
-            'amount'     => '3.000000000000000000',
-            'status'     => Order::STATUS_OPEN,
-            'created_at' => now(),
+        Order::factory()->create([
+            'user_id' => $other->id,
+            'symbol'  => 'BTC',
+            'side'    => Order::SIDE_BUY,
+            'price'   => '3.00000000',
+            'amount'  => '3.000000000000000000',
+            'status'  => Order::STATUS_OPEN,
         ]);
 
         Sanctum::actingAs($user, abilities: ['*']);
@@ -180,34 +175,31 @@ class ProfileControllerTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $openBtc = Order::create([
-            'user_id'    => $user->id,
-            'symbol'     => 'BTC',
-            'side'       => Order::SIDE_BUY,
-            'price'      => '10.00000000',
-            'amount'     => '1.000000000000000000',
-            'status'     => Order::STATUS_OPEN,
-            'created_at' => now(),
+        $openBtc = Order::factory()->create([
+            'user_id' => $user->id,
+            'symbol'  => 'BTC',
+            'side'    => Order::SIDE_BUY,
+            'price'   => '10.00000000',
+            'amount'  => '1.000000000000000000',
+            'status'  => Order::STATUS_OPEN,
         ]);
 
-        Order::create([
-            'user_id'    => $user->id,
-            'symbol'     => 'BTC',
-            'side'       => Order::SIDE_SELL,
-            'price'      => '11.00000000',
-            'amount'     => '1.000000000000000000',
-            'status'     => Order::STATUS_FILLED,
-            'created_at' => now()->subMinutes(2),
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'symbol'  => 'BTC',
+            'side'    => Order::SIDE_SELL,
+            'price'   => '11.00000000',
+            'amount'  => '1.000000000000000000',
+            'status'  => Order::STATUS_FILLED,
         ]);
 
-        Order::create([
-            'user_id'    => $user->id,
-            'symbol'     => 'ETH',
-            'side'       => Order::SIDE_BUY,
-            'price'      => '12.00000000',
-            'amount'     => '1.000000000000000000',
-            'status'     => Order::STATUS_OPEN,
-            'created_at' => now()->subMinutes(1),
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'symbol'  => 'ETH',
+            'side'    => Order::SIDE_BUY,
+            'price'   => '12.00000000',
+            'amount'  => '1.000000000000000000',
+            'status'  => Order::STATUS_OPEN,
         ]);
 
         Sanctum::actingAs($user, abilities: ['*']);
