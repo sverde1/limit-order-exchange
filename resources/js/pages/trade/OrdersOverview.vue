@@ -378,6 +378,20 @@ const handleOrderBookUpdated = (payload: any) => {
     }
 };
 
+const handleBalancesUpdated = (payload: any) => {
+    if (!payload?.user_id || payload.user_id !== currentUserId.value) {
+        return;
+    }
+
+    if (profile.value?.user) {
+        profile.value.user.balance = payload.balance ?? profile.value.user.balance;
+    }
+
+    if (payload.assets && Array.isArray(payload.assets) && profile.value) {
+        profile.value.assets = payload.assets;
+    }
+};
+
 const initPusher = async () => {
     if (pusherInstance.value || !currentUserId.value) {
         return pusherInstance.value;
@@ -422,6 +436,20 @@ const setupOrderBookUpdatedListener = async () => {
     };
 };
 
+const setupBalancesUpdatedListener = async () => {
+    const pusher = await initPusher();
+    if (!pusher || !currentUserId.value) return null;
+
+    const privateChannelName = `private-user.${currentUserId.value}`;
+    const channel = pusher.subscribe(privateChannelName);
+    channel.bind('UserBalancesUpdated', handleBalancesUpdated);
+
+    return () => {
+        channel.unbind('UserBalancesUpdated', handleBalancesUpdated);
+        pusher.unsubscribe(privateChannelName);
+    };
+};
+
 const setupOrderMatchedListener = async () => {
     if (!currentUserId.value) {
         return null;
@@ -443,6 +471,7 @@ const setupOrderMatchedListener = async () => {
 
 const cleanup = ref<(() => void) | null>(null);
 const bookCleanup = ref<(() => void) | null>(null);
+const balancesCleanup = ref<(() => void) | null>(null);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -455,11 +484,13 @@ onMounted(async () => {
     await Promise.all([loadProfile(), loadOrders(), loadOrderbook()]);
     cleanup.value = await setupOrderMatchedListener();
     bookCleanup.value = await setupOrderBookUpdatedListener();
+    balancesCleanup.value = await setupBalancesUpdatedListener();
 });
 
 onBeforeUnmount(() => {
     cleanup.value?.();
     bookCleanup.value?.();
+    balancesCleanup.value?.();
     if (pusherInstance.value) {
         pusherInstance.value.disconnect();
         pusherInstance.value = null;
