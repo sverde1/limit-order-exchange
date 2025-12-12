@@ -26,6 +26,22 @@ This project is a Laravel 12 + Vue 3 (Inertia) application for managing limit or
    ```bash
    php artisan serve
    ```
+5. Configure Pusher broadcasting in `.env`:
+   ```bash
+   BROADCAST_CONNECTION=pusher
+
+   PUSHER_APP_ID=your-app-id-here
+   PUSHER_APP_KEY=your-key-here
+   PUSHER_APP_SECRET=your-secret-here
+   PUSHER_APP_CLUSTER=eu
+
+   VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+   VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+   ```
+6. Refresh config cache after updating `.env`:
+   ```bash
+   php artisan config:clear
+   ```
 
 ## API Access with Tokens
 - API routes are protected by Sanctum. Generate personal access tokens from **Settings → API Keys** in the UI.

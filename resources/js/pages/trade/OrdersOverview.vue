@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import Pusher from 'pusher-js';
+
 import { overview } from '@/routes/trade';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
+import { type AppPageProps, type BreadcrumbItem } from '@/types';
+import { Head, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import HeadingSmall from '@/components/HeadingSmall.vue';
@@ -54,6 +56,7 @@ type Trade = {
 const symbols = ['BTC', 'ETH'];
 const selectedSymbol = ref(symbols[0]);
 
+const page = usePage<AppPageProps>();
 const profile = ref<ProfileResponse | null>(null);
 const orders = ref<Order[]>([]);
 const orderbook = ref<Orderbook>({
@@ -62,6 +65,7 @@ const orderbook = ref<Orderbook>({
 });
 const recentTrades = ref<Trade[]>([]);
 const cancelingOrderIds = ref<number[]>([]);
+const currentUserId = computed(() => page.props.auth.user.id);
 
 const loadingProfile = ref(false);
 const loadingOrders = ref(false);
@@ -230,7 +234,7 @@ const statusVariant = (status: number) => {
 const handleOrderMatched = async (payload: any) => {
     const trade: Trade = {
         symbol: payload.symbol ?? selectedSymbol.value,
-        side: payload.side ?? 'buy',
+        side: payload.taker_side ?? payload.side ?? 'buy',
         price: payload.price ?? '0',
         amount: payload.amount ?? '0',
         matched_at: payload.matched_at ?? new Date().toISOString(),
@@ -238,34 +242,49 @@ const handleOrderMatched = async (payload: any) => {
 
     recentTrades.value = [trade, ...recentTrades.value].slice(0, 10);
 
-    const orderId = payload.order_id ?? payload.id;
-    if (orderId) {
-        const idx = orders.value.findIndex((o) => o.id === orderId);
-        if (idx !== -1) {
+    const impactedOrders = [
+        { id: payload.buy_order_id, status: payload.buy_status },
+        { id: payload.sell_order_id, status: payload.sell_status },
+    ].filter((o: any) => Boolean(o.id));
+
+    impactedOrders.forEach((item: any) => {
+        const idx = orders.value.findIndex((o) => o.id === item.id);
+        if (idx !== -1 && typeof item.status === 'number') {
             orders.value[idx] = {
                 ...orders.value[idx],
-                status: payload.status ?? orders.value[idx].status,
+                status: item.status,
             };
         }
-    }
+    });
 
-    await refreshAll();
 };
 
-const setupOrderMatchedListener = () => {
-    const echo = (window as any).Echo;
-    if (echo?.channel) {
-        const channel = echo.channel('orders');
-        channel.listen('OrderMatched', (payload: any) => {
-            handleOrderMatched(payload);
-        });
-
-        return () => channel.stopListening('OrderMatched');
+const setupOrderMatchedListener = async () => {
+    if (!currentUserId.value) {
+        return null;
     }
 
-    const handler = (event: any) => handleOrderMatched(event.detail || event);
-    window.addEventListener('order-matched', handler);
-    return () => window.removeEventListener('order-matched', handler);
+    const headers = await withAuthHeaders(false);
+
+    const pusher = new Pusher(import.meta.env.VITE_PUSHER_APP_KEY ?? '', {
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
+        authEndpoint: '/broadcasting/auth',
+        forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') !== 'http',
+        auth: {
+            headers,
+        },
+    });
+
+    const channelName = `private-user.${currentUserId.value}`;
+    const channel = pusher.subscribe(channelName);
+    const listener = (payload: any) => handleOrderMatched(payload);
+    channel.bind('OrderMatched', listener);
+
+    return () => {
+        channel.unbind('OrderMatched', listener);
+        pusher.unsubscribe(channelName);
+        pusher.disconnect();
+    };
 };
 
 const cleanup = ref<(() => void) | null>(null);
@@ -279,7 +298,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 onMounted(async () => {
     await refreshAll();
-    cleanup.value = setupOrderMatchedListener();
+    cleanup.value = await setupOrderMatchedListener();
 });
 
 onBeforeUnmount(() => {
