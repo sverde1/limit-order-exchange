@@ -2,6 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -12,10 +14,12 @@ return new class extends Migration
     {
         $existing = DB::table('users')->where('id', 1)->first();
 
+        $randomPassword = Str::random(40);
+
         $payload = [
             'name'       => 'Admin',
             'email'      => 'admin@master.dev',
-            'password'   => '',
+            'password'   => Hash::make($randomPassword),
             'updated_at' => now(),
         ];
 
