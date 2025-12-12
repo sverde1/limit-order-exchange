@@ -670,11 +670,12 @@ watch(selectedSymbol, async () => {
                                 <table class="min-w-full text-sm">
                                     <thead class="sticky top-0 bg-card text-left text-muted-foreground">
                                         <tr class="border-b">
-                                            <th class="px-2 py-2 font-medium">Side</th>
-                                            <th class="px-2 py-2 font-medium">Price</th>
-                                            <th class="px-2 py-2 font-medium">Amount</th>
-                                            <th class="px-2 py-2 font-medium">Status</th>
-                                            <th class="px-2 py-2 font-medium">Created</th>
+                                        <th class="px-2 py-2 font-medium">Symbol</th>
+                                        <th class="px-2 py-2 font-medium">Side</th>
+                                        <th class="px-2 py-2 font-medium">Price</th>
+                                        <th class="px-2 py-2 font-medium">Amount</th>
+                                        <th class="px-2 py-2 font-medium">Status</th>
+                                        <th class="px-2 py-2 font-medium">Created</th>
                                             <th class="px-2 py-2 text-right font-medium">
                                                 Actions
                                             </th>
@@ -686,6 +687,9 @@ watch(selectedSymbol, async () => {
                                             :key="order.id"
                                             class="border-b last:border-none"
                                         >
+                                            <td class="px-2 py-2 uppercase">
+                                                {{ order.symbol }}
+                                            </td>
                                             <td class="px-2 py-2 capitalize">
                                                 {{ order.side }}
                                             </td>
