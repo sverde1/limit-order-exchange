@@ -637,75 +637,77 @@ watch(selectedSymbol, async () => {
                             No orders yet.
                         </div>
                         <div v-else class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
-                                <thead class="text-left text-muted-foreground">
-                                    <tr class="border-b">
-                                        <th class="px-2 py-2 font-medium">Side</th>
-                                        <th class="px-2 py-2 font-medium">Price</th>
-                                        <th class="px-2 py-2 font-medium">Amount</th>
-                                        <th class="px-2 py-2 font-medium">Status</th>
-                                        <th class="px-2 py-2 font-medium">Created</th>
-                                        <th class="px-2 py-2 text-right font-medium">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="order in orders"
-                                        :key="order.id"
-                                        class="border-b last:border-none"
-                                    >
-                                        <td class="px-2 py-2 capitalize">
-                                            {{ order.side }}
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            ${{ formatPrice(order.price) }}
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            {{ order.amount }}
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            <Badge
-                                                :variant="statusVariant(order.status) as any"
-                                                :class="{
-                                                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-100':
-                                                        order.status === 2,
-                                                    'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-100':
-                                                        order.status === 3,
-                                                }"
-                                            >
-                                                {{ statusLabel(order.status) }}
-                                            </Badge>
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            {{
-                                                order.created_at
-                                                    ? new Date(
-                                                          order.created_at,
-                                                      ).toLocaleString()
-                                                    : '—'
-                                            }}
-                                        </td>
-                                        <td class="px-2 py-2 text-right">
-                                            <Button
-                                                v-if="order.status === 1"
-                                                size="sm"
-                                                variant="destructive"
-                                                :disabled="cancelingOrderIds.includes(order.id)"
-                                                @click="cancelOrder(order.id)"
-                                            >
+                            <div class="max-h-[500px] overflow-y-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="sticky top-0 bg-card text-left text-muted-foreground">
+                                        <tr class="border-b">
+                                            <th class="px-2 py-2 font-medium">Side</th>
+                                            <th class="px-2 py-2 font-medium">Price</th>
+                                            <th class="px-2 py-2 font-medium">Amount</th>
+                                            <th class="px-2 py-2 font-medium">Status</th>
+                                            <th class="px-2 py-2 font-medium">Created</th>
+                                            <th class="px-2 py-2 text-right font-medium">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="order in orders"
+                                            :key="order.id"
+                                            class="border-b last:border-none"
+                                        >
+                                            <td class="px-2 py-2 capitalize">
+                                                {{ order.side }}
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                ${{ formatPrice(order.price) }}
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                {{ order.amount }}
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <Badge
+                                                    :variant="statusVariant(order.status) as any"
+                                                    :class="{
+                                                        'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-100':
+                                                            order.status === 2,
+                                                        'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-100':
+                                                            order.status === 3,
+                                                    }"
+                                                >
+                                                    {{ statusLabel(order.status) }}
+                                                </Badge>
+                                            </td>
+                                            <td class="px-2 py-2">
                                                 {{
-                                                    cancelingOrderIds.includes(order.id)
-                                                        ? 'Canceling…'
-                                                        : 'Cancel order'
+                                                    order.created_at
+                                                        ? new Date(
+                                                              order.created_at,
+                                                          ).toLocaleString()
+                                                        : '—'
                                                 }}
-                                            </Button>
-                                            <span v-else class="text-muted-foreground">—</span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                            </td>
+                                            <td class="px-2 py-2 text-right">
+                                                <Button
+                                                    v-if="order.status === 1"
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    :disabled="cancelingOrderIds.includes(order.id)"
+                                                    @click="cancelOrder(order.id)"
+                                                >
+                                                    {{
+                                                        cancelingOrderIds.includes(order.id)
+                                                            ? 'Canceling…'
+                                                            : 'Cancel order'
+                                                    }}
+                                                </Button>
+                                                <span v-else class="text-muted-foreground">—</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

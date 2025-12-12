@@ -262,6 +262,7 @@ class OrdersController extends Controller
         $seller = User::whereKey($sellerOrder->user_id)->lockForUpdate()->firstOrFail();
         $admin = User::whereKey($this->adminUserId)->lockForUpdate()->first();
 
+        $matchedAt      = now();
         $matchedPrice   = $maker->price; // trade executes at maker price
         $matchedAmount  = $taker->amount;
         $tradeValue     = bcmul($matchedPrice, $matchedAmount, 18);
@@ -332,12 +333,22 @@ class OrdersController extends Controller
         $sellerOrder->updated_at = now();
         $sellerOrder->save();
 
+        DB::table('trades')->insert([
+            'buy_order_id'  => $buyerOrder->id,
+            'sell_order_id' => $sellerOrder->id,
+            'symbol'        => $symbol,
+            'price'         => $matchedPrice,
+            'amount'        => $matchedAmount,
+            'commission'    => $commission,
+            'matched_at'    => $matchedAt->toDateTimeString(),
+        ]);
+
         return [
             'payload' => [
                 'symbol'        => $symbol,
                 'price'         => $matchedPrice,
                 'amount'        => $matchedAmount,
-                'matched_at'    => now()->toIso8601String(),
+                'matched_at'    => $matchedAt->toIso8601String(),
                 'taker_side'    => $taker->side,
                 'buy_order_id'  => $buyerOrder->id,
                 'sell_order_id' => $sellerOrder->id,
