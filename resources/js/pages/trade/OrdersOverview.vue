@@ -67,6 +67,8 @@ const orderbook = ref<Orderbook>({
 const recentTrades = ref<Trade[]>([]);
 const cancelingOrderIds = ref<number[]>([]);
 const currentUserId = computed(() => page.props.auth.user.id);
+const pusherInstance = ref<Pusher | null>(null);
+const bookChannel = ref<any>(null);
 const loadingProfile = ref(false);
 const loadingOrders = ref(false);
 const loadingOrderbook = ref(false);
@@ -322,14 +324,49 @@ const handleOrderMatched = async (payload: any) => {
 
 };
 
-const setupOrderMatchedListener = async () => {
-    if (!currentUserId.value) {
-        return null;
+const handleOrderBookUpdated = (payload: any) => {
+    if (!payload?.symbol || payload.symbol !== selectedSymbol.value) {
+        return;
+    }
+
+    const side = payload.side;
+    const action = payload.action;
+    const orderId = payload.order_id;
+    const price = payload.price;
+    const amount = payload.amount;
+
+    if (!side || !action) {
+        return;
+    }
+
+    const target = side === 'buy' ? orderbook.value.buys : orderbook.value.sells;
+
+    if (action === 'open') {
+        target.push({
+            id: orderId,
+            user_id: 0,
+            symbol: payload.symbol,
+            side,
+            price,
+            amount,
+            status: 1,
+        } as Order);
+    } else if (action === 'filled' || action === 'canceled') {
+        const idx = target.findIndex((o) => o.id === orderId);
+        if (idx !== -1) {
+            target.splice(idx, 1);
+        }
+    }
+};
+
+const initPusher = async () => {
+    if (pusherInstance.value || !currentUserId.value) {
+        return pusherInstance.value;
     }
 
     const headers = await withAuthHeaders(false);
 
-    const pusher = new Pusher(import.meta.env.VITE_PUSHER_APP_KEY ?? '', {
+    pusherInstance.value = new Pusher(import.meta.env.VITE_PUSHER_APP_KEY ?? '', {
         cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
         authEndpoint: '/broadcasting/auth',
         forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') !== 'http',
@@ -337,6 +374,42 @@ const setupOrderMatchedListener = async () => {
             headers,
         },
     });
+
+    return pusherInstance.value;
+};
+
+const setupOrderBookUpdatedListener = async () => {
+    const pusher = await initPusher();
+    if (!pusher) return null;
+
+    // Clean up previous book channel if present
+    if (bookChannel.value) {
+        bookChannel.value.unbind('OrderBookUpdated');
+        pusher.unsubscribe(bookChannel.value.name);
+        bookChannel.value = null;
+    }
+
+    const channelName = `orderbook.${selectedSymbol.value}`;
+    const channel = pusher.subscribe(channelName);
+    channel.bind('OrderBookUpdated', handleOrderBookUpdated);
+    bookChannel.value = channel;
+
+    return () => {
+        channel.unbind('OrderBookUpdated', handleOrderBookUpdated);
+        pusher.unsubscribe(channelName);
+        if (bookChannel.value?.name === channelName) {
+            bookChannel.value = null;
+        }
+    };
+};
+
+const setupOrderMatchedListener = async () => {
+    if (!currentUserId.value) {
+        return null;
+    }
+
+    const pusher = await initPusher();
+    if (!pusher) return null;
 
     const channelName = `private-user.${currentUserId.value}`;
     const channel = pusher.subscribe(channelName);
@@ -346,11 +419,11 @@ const setupOrderMatchedListener = async () => {
     return () => {
         channel.unbind('OrderMatched', listener);
         pusher.unsubscribe(channelName);
-        pusher.disconnect();
     };
 };
 
 const cleanup = ref<(() => void) | null>(null);
+const bookCleanup = ref<(() => void) | null>(null);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -362,14 +435,22 @@ const breadcrumbs: BreadcrumbItem[] = [
 onMounted(async () => {
     await Promise.all([loadProfile(), loadOrders(), loadOrderbook()]);
     cleanup.value = await setupOrderMatchedListener();
+    bookCleanup.value = await setupOrderBookUpdatedListener();
 });
 
 onBeforeUnmount(() => {
     cleanup.value?.();
+    bookCleanup.value?.();
+    if (pusherInstance.value) {
+        pusherInstance.value.disconnect();
+        pusherInstance.value = null;
+    }
 });
 
 watch(selectedSymbol, async () => {
     await loadOrderbook();
+    bookCleanup.value?.();
+    bookCleanup.value = await setupOrderBookUpdatedListener();
 });
 </script>
 

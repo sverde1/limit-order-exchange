@@ -461,7 +461,7 @@ class OrdersController extends Controller
     public function pusherTest()
     {
         $now = now()->toIso8601String();
-
+        /*
         $this->queueMatchedOrder([
             'symbol'        => 'BTC',
             'price'         => '25000.00',
@@ -475,6 +475,18 @@ class OrdersController extends Controller
             'buy_status'    => Order::STATUS_FILLED,
             'sell_status'   => Order::STATUS_FILLED,
         ]);
+        */
+
+        $dummyOrder = new Order();
+        $dummyOrder->id      = 9999;
+        $dummyOrder->user_id = 0;
+        $dummyOrder->symbol  = 'BTC';
+        $dummyOrder->side    = Order::SIDE_SELL;
+        $dummyOrder->price   = '25001.00';
+        $dummyOrder->amount  = '0.05000000';
+        $dummyOrder->status  = Order::STATUS_OPEN;
+
+        $this->queueBookEvent($dummyOrder, 'open');
 
         $this->dispatchEvents();
 
