@@ -3,7 +3,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { limitOrder } from '@/routes/trade';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import Pusher from 'pusher-js';
 
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,8 @@ const loading = ref(false);
 const message = ref('');
 const errors = ref<Errors>({});
 const profile = ref<ProfileResponse | null>(null);
+const pusherInstance = ref<Pusher | null>(null);
+const balancesCleanup = ref<(() => void) | null>(null);
 
 const xsrfToken = () => {
     const match = document.cookie
@@ -53,14 +56,23 @@ const xsrfToken = () => {
     return match ? decodeURIComponent(match.split('=')[1]) : '';
 };
 
-const withAuthHeaders = async () => {
+const withAuthHeaders = async (json = true) => {
     await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin' });
 
-    return {
+    const headers: Record<string, string> = {
         Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-XSRF-TOKEN': xsrfToken(),
     };
+
+    if (json) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    const token = xsrfToken();
+    if (token) {
+        headers['X-XSRF-TOKEN'] = token;
+    }
+
+    return headers;
 };
 
 const loadProfile = async () => {
@@ -100,6 +112,7 @@ const placeOrder = async () => {
     message.value = 'Order placed successfully.';
     form.price = '';
     form.amount = '';
+    await loadProfile();
     loading.value = false;
 };
 
@@ -117,9 +130,71 @@ const availableAsset = computed(() => {
     );
     return asset?.amount ?? '0';
 });
+const currentUserId = computed(() => profile.value?.user.id);
+
+const initPusher = async () => {
+    if (pusherInstance.value) {
+        return pusherInstance.value;
+    }
+
+    const headers = await withAuthHeaders(false);
+
+    pusherInstance.value = new Pusher(import.meta.env.VITE_PUSHER_APP_KEY ?? '', {
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
+        authEndpoint: '/broadcasting/auth',
+        forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') !== 'http',
+        auth: {
+            headers,
+        },
+    });
+
+    return pusherInstance.value;
+};
+
+const handleBalancesUpdated = (payload: any) => {
+    if (!profile.value || payload.user_id !== currentUserId.value) {
+        return;
+    }
+
+    profile.value = {
+        user: {
+            ...profile.value.user,
+            balance: payload.balance,
+            balance_locked: payload.balance_locked,
+        },
+        assets: payload.assets ?? [],
+    };
+};
+
+const setupBalancesUpdatedListener = async () => {
+    if (!currentUserId.value) {
+        return null;
+    }
+
+    const pusher = await initPusher();
+    if (!pusher) return null;
+
+    const channelName = `private-user.${currentUserId.value}`;
+    const channel = pusher.subscribe(channelName);
+    channel.bind('UserBalancesUpdated', handleBalancesUpdated);
+
+    return () => {
+        channel.unbind('UserBalancesUpdated', handleBalancesUpdated);
+        pusher.unsubscribe(channelName);
+    };
+};
 
 onMounted(async () => {
     await loadProfile();
+    balancesCleanup.value = await setupBalancesUpdatedListener();
+});
+
+onBeforeUnmount(() => {
+    balancesCleanup.value?.();
+    if (pusherInstance.value) {
+        pusherInstance.value.disconnect();
+        pusherInstance.value = null;
+    }
 });
 const orderValue = computed(() => {
     const priceNum = Number(form.price);
