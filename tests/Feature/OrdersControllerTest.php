@@ -70,6 +70,19 @@ class OrdersControllerTest extends TestCase
     }
 
     /**
+     * Ensure index requires a symbol.
+     */
+    public function test_index_requires_symbol(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user, abilities: ['*']);
+
+        $this->getJson('/api/orders')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['symbol']);
+    }
+
+    /**
      * Ensure creating a buy order reserves balance and returns the order.
      */
     public function test_create_creates_order_and_reserves_balance(): void

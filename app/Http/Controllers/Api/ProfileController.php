@@ -3,119 +3,57 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Asset;
-use App\Models\Order;
+use App\Http\Requests\Profile\AddDemoAssetsRequest;
+use App\Http\Requests\Profile\ProfileOrdersRequest;
+use App\Services\Profile\ProfileOrdersService;
+use App\Services\Profile\ProfileSummaryService;
+use App\Services\Profile\ProfileWalletService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
     /**
      * Return authenticated user profile with USD balance and asset balances.
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param  Request  $request  Authenticated request.
+     * @param  ProfileSummaryService  $summaryService  Service building the profile response.
+     * @return JsonResponse Profile payload response.
      */
-    public function show(Request $request)
+    public function show(Request $request, ProfileSummaryService $summaryService): JsonResponse
     {
-        $user = $request->user()->load([
-            'assets:id,user_id,symbol,amount,locked_amount',
-        ]);
-
-        return response()->json([
-            'user' => [
-                'id'             => $user->id,
-                'name'           => $user->name,
-                'email'          => $user->email,
-                'balance'        => $user->balance,
-                'balance_locked' => $user->balance_locked,
-            ],
-            'commission_rate' => (float) config('trading.commission_rate', 0.015),
-            'assets'          => $user->assets,
-        ]);
+        return response()->json($summaryService->build($request->user()));
     }
 
     /**
      * Reset the authenticated user wallet balance to $10k.
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param  AddDemoAssetsRequest  $request  Validated demo asset request.
+     * @param  ProfileWalletService  $walletService  Service updating demo balances.
+     * @return JsonResponse Updated balances payload.
      */
-    public function addDemoAssets(Request $request)
+    public function addDemoAssets(AddDemoAssetsRequest $request, ProfileWalletService $walletService): JsonResponse
     {
-        if (! extension_loaded('bcmath')) {
-            abort(500, 'BCMath PHP extension is required to process funds.');
-        }
-
-        $validated = $request->validate([
-            'balance' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
-            'symbol'  => ['nullable', 'string', 'max:16', 'regex:/^[\w\d]{1,16}$/i'],
-            'amount'  => ['nullable', 'numeric', 'min:0', 'max:999999999999999999.999999999999999999'],
-        ]);
-
-        $user = $request->user();
-
-        DB::transaction(function () use ($user, $validated) {
-            if (isset($validated['balance']) && $validated['balance'] > 0) {
-                $current       = $user->balance ?? 0;
-                $user->balance = bcadd((string) $current, (string) $validated['balance'], 2);
-                $user->save();
-            }
-
-            if (
-                isset($validated['symbol'], $validated['amount']) &&
-                $validated['symbol'] &&
-                $validated['amount'] > 0
-            ) {
-                $symbol = strtoupper($validated['symbol']);
-                $asset = Asset::firstOrNew([
-                    'user_id' => $user->id,
-                    'symbol'  => $symbol,
-                ]);
-
-                $asset->amount = bcadd((string) ($asset->amount ?? 0), (string) $validated['amount'], 18);
-                $asset->locked_amount = $asset->locked_amount ?? 0;
-                $asset->save();
-            }
-        });
-
-        return response()->json([
-            'message' => 'Demo balances updated.',
-            'balance' => $user->balance,
-            'assets'  => $user->fresh()->assets,
-        ]);
+        return response()->json(
+            $walletService->addDemoAssets($request->user(), $request->validated())
+        );
     }
 
     /**
      * Return the authenticated user's orders with optional filters.
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param  ProfileOrdersRequest  $request  Validated filter request.
+     * @param  ProfileOrdersService  $ordersService  Service for fetching orders.
+     * @return JsonResponse Filtered orders payload.
      */
-    public function orders(Request $request)
+    public function orders(ProfileOrdersRequest $request, ProfileOrdersService $ordersService): JsonResponse
     {
-        $validated = $request->validate([
-            'symbol' => ['sometimes', 'string', 'max:16'],
-            'status' => ['sometimes', 'in:open,filled,canceled,all'],
-        ]);
-
-        $symbol = isset($validated['symbol']) ? strtoupper($validated['symbol']) : null;
-        $status = $validated['status'] ?? 'all';
-
-        $statusMap = [
-            'open'     => Order::STATUS_OPEN,
-            'filled'   => Order::STATUS_FILLED,
-            'canceled' => Order::STATUS_CANCELED,
-        ];
-
-        $ordersQuery = $request->user()
-            ->orders()
-            ->when($symbol, fn ($query) => $query->where('symbol', $symbol))
-            ->when($status !== 'all', fn ($query) => $query->where('status', $statusMap[$status]))
-            ->orderByDesc('created_at');
+        $validated = $request->validated();
+        $symbol    = isset($validated['symbol']) ? strtoupper($validated['symbol']) : null;
+        $status    = $validated['status'] ?? 'all';
 
         return response()->json([
-            'orders' => $ordersQuery->get(),
+            'orders' => $ordersService->getOrders($request->user(), $symbol, $status),
         ]);
     }
 }
