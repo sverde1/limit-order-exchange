@@ -1,6 +1,27 @@
 # Limit Order Exchange
 
-This project is a Laravel 12 + Vue 3 (Inertia) application for managing limit orders and account balances.
+A small limit-order exchange built with **Laravel 12** and **Vue 3 (Inertia)**. Users place buy and sell limit
+orders, orders are matched against the book, funds stay in escrow while an order is open, and both sides see
+updates in real time.
+
+> Built in December 2025 as a take-home technical assessment. I used Codex as a coding assistant. I reviewed
+> every backend (PHP/Laravel) change line by line before committing, holding it to the standard of code I write
+> myself. The assignment focused on the backend, so the Vue frontend got a lighter review.
+
+## Features
+- Limit orders with full-match execution at the maker's price and a 1.5% commission
+- Escrow: buy orders reserve USD, sell orders lock the asset, and cancelling releases both
+- Real-time order book, balance and trade updates via Pusher / Laravel Echo
+- Trade history with pagination; Fortify auth including 2FA
+
+## Design decisions
+- **Money math with bcmath** on decimal strings for order values, balances and settlement.
+- **Row locks inside DB transactions** (`lockForUpdate`) on users, assets and the matched maker order,
+  so two concurrent orders can't spend the same balance or fill the same maker twice.
+- **Actions + services:** `PlaceOrder` / `CancelOrder` call `OrderFundsService` (escrow) and
+  `OrderMatchingService` (matching). Controllers stay thin.
+- **Events are sent after commit:** `OrderMatched`, `OrderBookUpdated` and `UserBalancesUpdated` are queued
+  inside the transaction and broadcast only after it commits, so clients never see a rolled-back trade.
 
 ## Requirements
 - PHP 8.2+ with the `bcmath` extension enabled (required for all order math and balance calculations).
